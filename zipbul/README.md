@@ -57,10 +57,11 @@ CLI 가져오기는 원본 경로를 등록하므로 원본 파일을 옮기거�
 npm run typecheck
 npm test
 npm run build
+npx playwright install chromium
 npm run test:browser
 ```
 
-브라우저 검증은 실행 중인 서버와 전달받은 실제 세션을 필요로 하며, 현재 Mac의 headed Chromium/Metal을 사용한다. 테스트가 만드는 복제·합성 현장은 종료 시 제거한다. 결과와 캡처는 `output/`에 남는다.
+`npm test`는 로컬 저장·데이터 계약과 합성 데이터 기반 Sites API를 함께 검사하며 원본 촬영 파일이나 실제 모델 호출이 필요하지 않다. `node:sqlite`를 사용할 수 있는 Node.js 22.13 이상이 필요하다. 브라우저 검증은 실행 중인 서버와 전달받은 실제 세션을 필요로 하며, 현재 Mac의 headed Chromium/Metal을 사용한다. 테스트가 만드는 복제·합성 현장은 종료 시 제거한다. 결과와 캡처는 `output/`에 남는다.
 
 2026-10-09 로컬 확인: 실제 277.89초 영상의 19개 표본에서 Astra 분석 4개, 실제 근거 대화, 수동 연결/검토/새로고침 보존, 전체 17개 노드/집중 4개 노드, 영상 Range 재생, 메타데이터 없는 업로드, 이동/접지/벽 충돌, 보정 경로 기록/무효화를 확인했다. 단위 테스트 6개와 타입 검사·빌드가 통과했다. 실제 M4 Pro/Metal의 보완 장면 측정은 약 54–74 FPS였으며 보장 수치는 아니다. Headless SwiftShader의 1–2 FPS는 소프트웨어 렌더링 결과다.
 

@@ -11,7 +11,7 @@ if(!fs.existsSync(path.join(target,'build/sites-worker.ts')))throw new Error('In
 for(const name of ['components','lib'])fs.cpSync(path.join(source,name),path.join(target,name),{recursive:true});
 for(const name of ['page.tsx','layout.tsx','globals.css'])fs.copyFileSync(path.join(source,'app',name),path.join(target,'app',name));
 fs.mkdirSync(path.join(target,'sites'),{recursive:true});
-for(const name of ['api.ts','analysis.ts'])fs.copyFileSync(path.join(source,'sites',name),path.join(target,'sites',name));
+for(const name of ['api.ts','analysis.ts','imports.ts'])fs.copyFileSync(path.join(source,'sites',name),path.join(target,'sites',name));
 let worker=fs.readFileSync(path.join(target,'build/sites-worker.ts'),'utf8');
 if(!worker.includes('handleApi')){worker='import {handleApi,type SiteEnv} from "../sites/api";\n'+worker;worker=worker.replace('    let binding = ctx.props?.CONNECTORS;','    if(new URL(request.url).pathname.startsWith("/api/"))return handleApi(request,env as SiteEnv,ctx);\n    let binding = ctx.props?.CONNECTORS;');}
 fs.writeFileSync(path.join(target,'build/sites-worker.ts'),worker);
@@ -19,5 +19,7 @@ let ui=fs.readFileSync(path.join(target,'components/Workspace.tsx'),'utf8').repl
 ui=ui.replace('const focused=viewer.current?.focus(h);\n    if(!focused&&f?.camera.length===4)viewer.current?.cameraFromFrame(f,true);','viewer.current?.focus(h);');
 fs.writeFileSync(path.join(target,'components/Workspace.tsx'),ui);
 const graph=path.join(target,'components/SpatialRelationGraph.tsx');if(fs.existsSync(graph))fs.writeFileSync(graph,fs.readFileSync(graph,'utf8').replace('element.dataset.azimuth','element!.dataset.azimuth'));
-fs.copyFileSync(path.join(source,'sites/ImportScene.tsx'),path.join(target,'components/ImportScene.tsx'));
+let importUI=fs.readFileSync(path.join(source,'components/ImportScene.tsx'),'utf8');
+importUI=importUI.replace('준비 완료 후 ‘새 위험 분석’에서 Astra 분석을 시작하세요.','새 파일 준비에는 연결된 처리 서버가 필요합니다. 준비 완료 후 ‘새 위험 분석’에서 Astra 분석을 시작하세요.');
+fs.writeFileSync(path.join(target,'components/ImportScene.tsx'),importUI);
 console.log(JSON.stringify({checkout:target,synced:true}));

@@ -1,11 +1,12 @@
 import {z} from 'zod';
 import {bbox,vector} from '../lib/contracts';
 import {fittedScene} from '../lib/scene-layout';
-import type {SceneData,Hazard,ManualState,Run} from '../lib/types';
+import type {SceneData,Hazard,ManualState,Run,RunDetail} from '../lib/types';
+import {handleImport} from './imports';
 import {start,advance,cancel,chat} from './analysis';
 
-export interface SiteEnv {DB:D1Database;BUCKET:R2Bucket;ZIPBUL_UPLOAD_TOKEN?:string;OPENAI_API_KEY?:string}
-export interface StoredScene {scene:SceneData;manual:ManualState;surfaces:number[];createdAt:string;version?:number;analysisState?:unknown}
+export interface SiteEnv {DB:D1Database;BUCKET:R2Bucket;ZIPBUL_UPLOAD_TOKEN?:string;OPENAI_API_KEY?:string;ZIPBUL_SYNC_TOKEN?:string;ZIPBUL_IMPORT_ORIGIN?:string}
+export interface StoredScene {scene:SceneData;manual:ManualState;surfaces:number[];createdAt:string;version?:number;analysisState?:unknown;history?:Record<string,RunDetail>}
 export class ApiError extends Error {constructor(public status:number,message:string){super(message);}}
 export const json=(value:unknown,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'no-store'}});
 export async function load(env:SiteEnv,id:string):Promise<StoredScene>{
@@ -30,7 +31,7 @@ export function snapshot(record:StoredScene):SceneData {
 function revision(r:StoredScene,p:{manualRevision:number}){if(p.manualRevision!==r.manual.revision)throw new ApiError(409,'검토 기록이 변경됐습니다. 다시 확인해 주세요.');}
 const keySchema=z.string().regex(/^scene-[\w-]+\/(video|mesh|collision|original|frame-\d+)$/);
 async function upload(request:Request,env:SiteEnv,action:string){
-  if(!env.ZIPBUL_UPLOAD_TOKEN||request.headers.get('X-Zipbul-Upload')!==env.ZIPBUL_UPLOAD_TOKEN)throw new ApiError(403,'자료 전송 권한이 없습니다.');
+  if(![env.ZIPBUL_UPLOAD_TOKEN,env.ZIPBUL_SYNC_TOKEN].filter(Boolean).includes(request.headers.get('X-Zipbul-Upload')||''))throw new ApiError(403,'자료 전송 권한이 없습니다.');
   const url=new URL(request.url);
   if(action==='part'){
     const key=keySchema.parse(url.searchParams.get('key')),uploadId=z.string().min(1).parse(url.searchParams.get('uploadId')),part=z.coerce.number().int().min(1).max(10000).parse(url.searchParams.get('part'));
@@ -50,11 +51,23 @@ async function upload(request:Request,env:SiteEnv,action:string){
     const key=keySchema.parse(body.key);const parts=z.array(z.object({partNumber:z.number().int().positive(),etag:z.string()})).min(1).parse(body.parts);
     const object=await env.BUCKET.resumeMultipartUpload(key,z.string().parse(body.uploadId)).complete(parts);return json({key,size:object.size});
   }
-  if(action==='seed'){
+  if(action==='seed'||action==='sync'){
     const record=body as StoredScene;const id=z.string().regex(/^scene-[\w-]+$/).parse(record.scene?.id);
     if(!record.manual||!Array.isArray(record.surfaces)||!Array.isArray(record.scene.frames))throw new ApiError(400,'현장 자료 형식이 잘못됐습니다.');
     for(const asset of ['mesh','video','collision','original',...record.scene.frames.map(f=>f.id)])if(!await env.BUCKET.head(keySchema.parse(`${id}/${asset}`)))throw new ApiError(400,`자료 전송이 완료되지 않았습니다: ${asset}`);
-    const existing=await env.DB.prepare('SELECT id FROM scenes WHERE id=?').bind(id).first();if(existing)throw new ApiError(409,'이미 등록된 현장은 덮어쓰지 않습니다.');
+    const existing=await env.DB.prepare('SELECT id FROM scenes WHERE id=?').bind(id).first();if(existing){
+      if(action!=='sync')throw new ApiError(409,'이미 등록된 현장은 덮어쓰지 않습니다.');
+      const current=await load(env,id);
+      if(current.scene.assetRevision!==record.scene.assetRevision)throw new ApiError(409,'원본이 다른 현장은 덮어쓰지 않습니다.');
+      if(current.scene.runs.some(r=>['running','queued'].includes(r.status)))throw new ApiError(409,'진행 중인 분석을 마친 뒤 동기화하세요.');
+      const remoteRuns=current.scene.runs.filter(r=>!record.scene.runs.some(x=>x.id===r.id));
+      const hazards=new Map(record.scene.hazards.map(h=>[h.id,h]));
+      for(const h of current.scene.hazards)if(!hazards.has(h.id)||remoteRuns.some(r=>r.id===h.runId))hazards.set(h.id,h);
+      const corrections=[...new Map([...record.manual.corrections,...current.manual.corrections].map(c=>[c.id,c])).values()];
+      const manual={...record.manual,hazards:{...record.manual.hazards,...current.manual.hazards},reviews:{...record.manual.reviews,...current.manual.reviews},corrections,revision:Math.max(record.manual.revision,current.manual.revision)+1,navigationRevision:Math.max(record.manual.navigationRevision,current.manual.navigationRevision)+(JSON.stringify(corrections)!==JSON.stringify(current.manual.corrections)?1:0)};
+      const merged:StoredScene={...record,version:current.version,manual,history:{...record.history,...current.history},scene:{...record.scene,hazards:[...hazards.values()],runs:[...record.scene.runs,...remoteRuns],navigationChecks:[...new Map([...(record.scene.navigationChecks||[]),...(current.scene.navigationChecks||[])].map(r=>[r.id,r])).values()]}};
+      await save(env,merged);return json({id,synced:true});
+    }
     await env.DB.prepare('INSERT INTO scenes(id,title,created_at,data,version) VALUES(?,?,?,?,0)').bind(id,record.scene.title,record.createdAt,JSON.stringify(record)).run();return json({id},201);
   }
   throw new ApiError(404,'없는 전송 작업입니다.');
@@ -77,6 +90,7 @@ export async function handleApi(request:Request,env:SiteEnv,ctx?:{waitUntil:(p:P
   const url=new URL(request.url),parts=url.pathname.split('/').filter(Boolean).slice(1),method=request.method;
   if(!['GET','HEAD'].includes(method)){const origin=request.headers.get('origin');if(origin&&origin!==url.origin)throw new ApiError(403,'같은 사이트에서 요청해 주세요.');}
   if(parts[0]==='health')return json({ok:true,model:'gpt-6-astra',keyConfigured:!!env.OPENAI_API_KEY,hosting:'sites'});
+  if(parts[0]==='uploads'||parts[0]==='imports')return await handleImport(request,env,parts,ctx);
   if(parts[0]==='transfer'&&method==='POST')return await upload(request,env,parts[1]);
   if(parts[0]!=='scenes')throw new ApiError(404,'요청을 찾을 수 없습니다.');
   if(parts.length===1&&method==='GET'){const rows=await env.DB.prepare('SELECT id,title,created_at AS createdAt FROM scenes ORDER BY created_at DESC').all();return json(rows.results);}
@@ -86,6 +100,10 @@ export async function handleApi(request:Request,env:SiteEnv,ctx?:{waitUntil:(p:P
   const record=await load(env,id),s=snapshot(record),m=record.manual;
   if(!action&&method==='GET'){if(ctx)ctx.waitUntil(advance(env,id).catch(()=>{}));return json(s);}
   if(action==='export'&&method==='GET')return new Response(JSON.stringify(s,null,2),{headers:{'Content-Type':'application/json','Content-Disposition':'attachment; filename="zipbul-review.json"','Cache-Control':'no-store'}});
+  if(action==='analyses'&&method==='GET'){
+    const run=s.runs.find(r=>r.id===parts[3]);if(!run)throw new ApiError(404,'분석 이력을 찾을 수 없습니다.');
+    return json(record.history?.[run.id]||{run,hazards:s.hazards.filter(h=>h.runId===run.id),savedAt:run.finishedAt||null});
+  }
   if(action==='analyses'&&method==='POST'){
     if(parts[4]==='cancel')return json(await cancel(env,id,parts[3]));
     const run=await start(env,id,await request.json());if(ctx)ctx.waitUntil(advance(env,id).catch(()=>{}));return json(run,202);
@@ -122,5 +140,5 @@ export async function handleApi(request:Request,env:SiteEnv,ctx?:{waitUntil:(p:P
     const route={...p,id:`route-${crypto.randomUUID()}`,checkedAt:new Date().toISOString(),stale:false,validation:'browser_rapier' as const};record.scene.navigationChecks=[...(record.scene.navigationChecks||[]),route].slice(-30);await save(env,record);return json(route);
   }else throw new ApiError(404,'요청을 찾을 수 없습니다.');
   await save(env,record);return json(snapshot(record));
- }catch(e){const error=e as Error;return json({error:error instanceof z.ZodError?'입력 형식을 확인해 주세요.':String(error.message).replaceAll(env.OPENAI_API_KEY||'__NO_KEY__','[redacted]').replaceAll(env.ZIPBUL_UPLOAD_TOKEN||'__NO_UPLOAD__','[redacted]')},error instanceof ApiError?error.status:error instanceof z.ZodError?400:500);}
+ }catch(e){const error=e as Error;return json({error:error instanceof z.ZodError?'입력 형식을 확인해 주세요.':String(error.message).replaceAll(env.OPENAI_API_KEY||'__NO_KEY__','[redacted]').replaceAll(env.ZIPBUL_UPLOAD_TOKEN||'__NO_UPLOAD__','[redacted]').replaceAll(env.ZIPBUL_SYNC_TOKEN||'__NO_SYNC__','[redacted]')},error instanceof ApiError?error.status:error instanceof z.ZodError?400:500);}
 }

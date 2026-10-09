@@ -2,9 +2,9 @@
   "project_id": "appgprj_6ac87c9f9cbc8191a3cc2b42483a3922",
   "url": "https://zipbul-field-explorer.summits.chatgpt.site",
   "audience": "public",
-  "deployment_id": "appgdep_6ac8845a0e988191be160e7d889a94e0",
-  "version_id": "appgprj_6ac87c9f9cbc8191a3cc2b42483a3922~appgver_f75bde0317448191aec433670e8b2d62",
-  "commit_sha": "ab7571a49e28da05c73b1ee842c9d24b339f9e7e",
+  "deployment_id": "appgdep_6ac89333f7e48191afd16b4f54eeb323",
+  "version_id": "appgprj_6ac87c9f9cbc8191a3cc2b42483a3922~appgver_a9b266f2a7248191b3357f5beb959ebb",
+  "commit_sha": "f7f0cfa0d801ed571be2be0eca03ac76c892f305",
   "source_checkout": "/Users/gimdonghyeon/.codex/sites/zipbul-20261009",
   "bindings": {
     "d1": "DB",
@@ -12,22 +12,22 @@
   },
   "secret_names": [
     "OPENAI_API_KEY",
-    "ZIPBUL_UPLOAD_TOKEN"
+    "ZIPBUL_UPLOAD_TOKEN",
+    "ZIPBUL_SYNC_TOKEN"
   ],
-  "deployed_at": "2026-10-09T06:06:34.814839+00:00",
-  "public_access_verification": {
-    "access_policy_revision": 2,
-    "anonymous_page_status": 200,
-    "anonymous_scene_list_status": 200,
-    "redirect": null
-  },
+  "environment_names": [
+    "ZIPBUL_IMPORT_ORIGIN"
+  ],
+  "deployed_at": "2026-10-09T07:10:01.175613+00:00",
+  "source_version": 4,
+  "scene_ids": [
+    "scene-105bfbad-4a6f-4174-98ea-c10341cda210",
+    "scene-33a46c91-0ba7-44f8-99dc-bfe3588c539a"
+  ],
   "verification": {
-    "completed_at": "2026-10-09T05:50:43.605Z",
-    "browser": true,
-    "asset_count": 23,
-    "chat_model": "gpt-6-astra",
-    "analysis_status": "completed",
-    "analysis_frames": 1,
-    "report": "output/sites-verification.json"
+    "report": "output/sites-update-verification.json",
+    "import_report": "output/sites-import-verification.json",
+    "upload_requires_processor": "https://zipbul.summit1123.co.kr",
+    "new_paid_ai_call": false
   }
 }

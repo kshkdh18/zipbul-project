@@ -64,6 +64,7 @@ export async function advance(env:SiteEnv,id:string){
       r.scene.hazards=[...combined.values()];x.completedFrameIds=[...new Set([...x.completedFrameIds,...p.batchIds])];x.resultCount+=result.hazards.length;
       x.usage={input_tokens:(x.usage?.input_tokens||0)+(response.usage?.input_tokens||0),output_tokens:(x.usage?.output_tokens||0)+(response.usage?.output_tokens||0)};
       if(x.completedFrameIds.length===x.frameIds.length){x.status='completed';x.phase='표본 분석 완료';x.finishedAt=new Date().toISOString();}else x.phase=`근거 검증 ${x.completedFrameIds.length}/${x.frameIds.length} 프레임`;
+      r.history??={};r.history[x.id]={run:structuredClone(x),hazards:structuredClone(r.scene.hazards.filter(h=>h.runId===x.id)),savedAt:new Date().toISOString()};
       ps.responseId=undefined;ps.batchIds=[];ps.leaseUntil=0;
     });
   }catch(e){await mutate(env,id,r=>{const x=r.scene.runs.find(x=>x.id===run.id);if(x&&x.status!=='canceled'){x.status=x.completedFrameIds.length?'partial':'failed';x.phase='분석 확인 필요';x.error=String((e as Error).message).replaceAll(env.OPENAI_API_KEY||'__NO_KEY__','[redacted]').slice(0,700);}const ps=state(r);if(ps?.leaseToken===lease)ps.leaseUntil=0;});}

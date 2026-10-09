@@ -34,4 +34,4 @@ for(const asset of manifest.assets){
   }}finally{fs.closeSync(fd);}
   const done=await request('complete',{key:asset.key,uploadId:begin.uploadId,parts});if(done.size!==asset.size)throw new Error('Uploaded size mismatch');
 }
-console.log(JSON.stringify({seed:await request('seed',manifest.record)}));
+console.log(JSON.stringify({seed:await request(process.argv.includes('--sync')?'sync':'seed',manifest.record)}));
