@@ -1,0 +1,9 @@
+.build/
+DerivedData*/
+*.xcuserstate
+xcuserdata/
+.swiftpm/
+artifacts/
+
+# Local field recordings are test data, not source code.
+Tests/*.zip
