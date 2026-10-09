@@ -1,0 +1,168 @@
+{
+  "schemaVersion": "1.0-draft",
+  "exampleOnly": true,
+  "description": "기획 검토용 가상 사례. 미디어 파일은 존재하지 않으며 실제 API 실행·위험 탐지·공간 검증 결과가 아니다.",
+  "scene": {
+    "id": "scene-demo-001",
+    "name": "예시 작업 공간",
+    "assetRevision": "assets-demo-r1",
+    "resultRevision": "result-demo-r1",
+    "capturedAt": null,
+    "coordinates": {
+      "unit": "meter",
+      "handedness": "right",
+      "upAxis": "Y",
+      "scaleVerified": false,
+      "matrixLayout": "column-major",
+      "worldFromAsset": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+    }
+  },
+  "assets": [
+    {"id": "asset-mesh-001", "kind": "mesh", "path": "scene.glb", "sha256": null, "origin": "example"},
+    {"id": "asset-video-001", "kind": "original_video", "path": "source.mov", "sha256": null, "origin": "example", "durationMs": 60000},
+    {"id": "asset-frame-001", "kind": "frame", "path": "frames/12340.jpg", "sourceAssetId": "asset-video-001", "origin": "example"},
+    {"id": "asset-frame-002", "kind": "frame", "path": "frames/17100.jpg", "sourceAssetId": "asset-video-001", "origin": "example"}
+  ],
+  "frames": [
+    {
+      "id": "frame-001",
+      "videoAssetId": "asset-video-001",
+      "imageAssetId": "asset-frame-001",
+      "timestampMs": 12340,
+      "sourcePts": 12340,
+      "timeBase": [1, 1000],
+      "sourceStartPts": 0,
+      "width": 1920,
+      "height": 1080,
+      "imageTransform": {"rotationDegrees": 0, "cropNormalized": [0, 0, 1, 1]},
+      "cameraPoseId": null
+    },
+    {
+      "id": "frame-002",
+      "videoAssetId": "asset-video-001",
+      "imageAssetId": "asset-frame-002",
+      "timestampMs": 17100,
+      "sourcePts": 17100,
+      "timeBase": [1, 1000],
+      "sourceStartPts": 0,
+      "width": 1920,
+      "height": 1080,
+      "imageTransform": {"rotationDegrees": 0, "cropNormalized": [0, 0, 1, 1]},
+      "cameraPoseId": null
+    }
+  ],
+  "entities": [
+    {"id": "zone-001", "kind": "zone", "label": "통로 A", "anchorIds": []},
+    {"id": "object-001", "kind": "object", "label": "바닥 케이블 후보", "anchorIds": ["anchor-001"]}
+  ],
+  "evidence": [
+    {
+      "id": "evidence-001",
+      "frameId": "frame-001",
+      "videoAssetId": "asset-video-001",
+      "clipStartMs": 11000,
+      "clipEndMs": 14000,
+      "bboxNormalized": [0.28, 0.56, 0.36, 0.21],
+      "bboxAppliesTo": "frame_only",
+      "observation": "예시: 바닥을 가로지르는 가는 선 모양의 대상이 보인다.",
+      "origin": "example"
+    },
+    {
+      "id": "evidence-002",
+      "frameId": "frame-002",
+      "videoAssetId": "asset-video-001",
+      "clipStartMs": 16000,
+      "clipEndMs": 18000,
+      "bboxNormalized": [0.2, 0.42, 0.55, 0.28],
+      "bboxAppliesTo": "frame_only",
+      "observation": "예시: 다른 시각에서 같은 대상으로 보이는 선과 주변 바닥이 보인다.",
+      "origin": "example"
+    }
+  ],
+  "anchors": [
+    {
+      "id": "anchor-001",
+      "entityId": "object-001",
+      "meshAssetId": "asset-mesh-001",
+      "assetRevision": "assets-demo-r1",
+      "positionAsset": [2.1, 0.02, 1.4],
+      "mappingMethod": "manual",
+      "mappingStatus": "proposed",
+      "surfaceBinding": null,
+      "evidenceIds": ["evidence-001", "evidence-002"],
+      "focusView": {"positionAsset": [2.1, 1.5, 3.2], "targetAsset": [2.1, 0.02, 1.4], "validated": false}
+    }
+  ],
+  "hazards": [
+    {
+      "id": "hazard-001",
+      "displayId": "H-01",
+      "title": "통로의 케이블 걸림 가능성",
+      "entityIds": ["object-001"],
+      "evidenceIds": ["evidence-001", "evidence-002"],
+      "anchorIds": ["anchor-001"],
+      "observation": "예시: 통로 바닥을 가로지르는 대상이 관찰된다.",
+      "riskHypothesis": "예시: 이동 중 발에 걸릴 가능성이 있어 확인이 필요하다.",
+      "priority": "review_first",
+      "priorityReason": "예시: 점검자가 이동할 통로와 겹치는 것으로 제안되었다.",
+      "suggestedCheck": "케이블인지, 고정되어 있는지, 실제 통행 영역과 겹치는지 현장에서 확인한다.",
+      "assertionStatus": "hypothesis",
+      "reviewStatus": "unreviewed"
+    }
+  ],
+  "navigation": {
+    "waypoints": [
+      {"id": "waypoint-entry", "positionAsset": [0, 0, 3], "floorVerified": false},
+      {"id": "waypoint-inspect-001", "positionAsset": [2.1, 0, 2.8], "floorVerified": false}
+    ],
+    "segments": [
+      {"id": "nav-segment-001", "from": "waypoint-entry", "to": "waypoint-inspect-001", "traversability": "unknown", "sourceSupport": "partial", "usesExplorationCorrection": true, "correctionIds": ["correction-floor-001"]}
+    ],
+    "corrections": [
+      {"id": "correction-floor-001", "kind": "floor_patch", "origin": "exploration_correction", "assetRevision": "assets-demo-r1", "description": "가상 예시: 탐사용 바닥 구멍 보정. 실제 현장 통행 가능성을 검증한 결과가 아니다."}
+    ]
+  },
+  "routes": [
+    {
+      "id": "route-001",
+      "label": "케이블 후보 확인 순서",
+      "kind": "inspection",
+      "hazardIds": ["hazard-001"],
+      "waypointIds": ["waypoint-entry", "waypoint-inspect-001"],
+      "segmentIds": ["nav-segment-001"],
+      "validationStatus": "unverified",
+      "pathClassification": "simulation",
+      "showAsTraversablePath": false
+    }
+  ],
+  "relations": [
+    {"id": "relation-001", "source": "object-001", "target": "zone-001", "type": "located_in", "label": "통로 A에 위치하는 것으로 제안", "assertion": "inferred", "evidenceIds": ["evidence-001"]},
+    {"id": "relation-002", "source": "object-001", "target": "evidence-001", "type": "observed_in", "label": "00:12.340 관찰", "assertion": "observed", "evidenceIds": ["evidence-001"]},
+    {"id": "relation-003", "source": "object-001", "target": "evidence-002", "type": "observed_in", "label": "00:17.100 동일 대상 후보", "assertion": "inferred", "evidenceIds": ["evidence-002"]},
+    {"id": "relation-004", "source": "hazard-001", "target": "object-001", "type": "concerns", "label": "검토 대상", "assertion": "inferred", "evidenceIds": ["evidence-001", "evidence-002"]},
+    {"id": "relation-005", "source": "evidence-001", "target": "hazard-001", "type": "supports", "label": "위험 해석의 근거", "assertion": "inferred", "evidenceIds": ["evidence-001"]},
+    {"id": "relation-006", "source": "hazard-001", "target": "route-001", "type": "may_affect", "label": "점검 이동에 영향 가능성", "assertion": "inferred", "evidenceIds": ["evidence-001", "evidence-002"]}
+  ],
+  "graph": {
+    "nodeIds": ["zone-001", "object-001", "hazard-001", "evidence-001", "evidence-002", "route-001"],
+    "edgeIds": ["relation-001", "relation-002", "relation-003", "relation-004", "relation-005", "relation-006"],
+    "availableViews": ["focus", "relation_path", "full", "grouped"],
+    "allowExpandAll": true
+  },
+  "analysisRun": {
+    "id": "analysis-example-001",
+    "model": "gpt-6-astra",
+    "executionKind": "example",
+    "providerResponseIds": [],
+    "promptVersion": "design-v1",
+    "actuallyExecuted": false,
+    "coverage": {"analyzedTimestampMs": [], "completeVideoCoverage": false}
+  },
+  "presentation": {
+    "selectedHazardId": "hazard-001",
+    "selectedEvidenceId": "evidence-001",
+    "effectPreset": "highlight_region",
+    "autoFocusAllowed": false,
+    "reason": "형식 예시의 위치·검토 카메라는 검증되지 않았다. 실제 구현은 검증된 포커스 위치 또는 사용자 지정 후 이동한다."
+  }
+}
