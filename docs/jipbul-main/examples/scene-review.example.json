@@ -1,12 +1,13 @@
 {
-  "schemaVersion": "1.0-draft",
+  "schemaVersion": "1.1-draft",
   "exampleOnly": true,
-  "description": "기획 검토용 가상 사례. 미디어 파일은 존재하지 않으며 실제 API 실행·위험 탐지·공간 검증 결과가 아니다.",
+  "description": "기획 검토용 가상 사례. 분석 결과와 사용자 매핑을 합친 읽기 예시이며 저장 파일 구조 자체는 아니다. 미디어 파일은 존재하지 않으며 실제 API 실행·위험 탐지·공간 검증 결과가 아니다.",
   "scene": {
     "id": "scene-demo-001",
     "name": "예시 작업 공간",
     "assetRevision": "assets-demo-r1",
     "resultRevision": "result-demo-r1",
+    "manualRevision": "manual-demo-r1",
     "capturedAt": null,
     "coordinates": {
       "unit": "meter",
@@ -55,6 +56,16 @@
     {"id": "zone-001", "kind": "zone", "label": "통로 A", "anchorIds": []},
     {"id": "object-001", "kind": "object", "label": "바닥 케이블 후보", "anchorIds": ["anchor-001"]}
   ],
+  "representation": {
+    "revision": "representation-demo-r1",
+    "defaultViewByMode": {"analysis": "original", "walkthrough": "enhanced"},
+    "qualityPriority": "source_fidelity",
+    "preserveCameraAndSelectionOnCompare": true,
+    "visualComparisonChangesColliders": false,
+    "enhancements": [],
+    "preparationStatus": "not_prepared",
+    "description": "모드별 기본 표시 계약만 담은 가상 예시. 실제 보완 객체와 영상 비교 결과는 아직 없으며 장면 품질 검증을 통과한 상태가 아니다."
+  },
   "evidence": [
     {
       "id": "evidence-001",
@@ -110,16 +121,34 @@
       "reviewStatus": "unreviewed"
     }
   ],
+  "manualMappings": [
+    {
+      "id": "mapping-001",
+      "entityId": "object-001",
+      "hazardIds": ["hazard-001"],
+      "evidenceIds": ["evidence-001", "evidence-002"],
+      "anchorId": "anchor-001",
+      "assetRevision": "assets-demo-r1",
+      "recordRevision": 1,
+      "reviewedBy": null,
+      "reviewedAt": null,
+      "reviewHistory": [],
+      "origin": "example"
+    }
+  ],
   "navigation": {
+    "revision": "navigation-demo-r1",
+    "collisionRevision": "collision-demo-r1",
+    "correctionRevision": "corrections-demo-r1",
     "waypoints": [
       {"id": "waypoint-entry", "positionAsset": [0, 0, 3], "floorVerified": false},
       {"id": "waypoint-inspect-001", "positionAsset": [2.1, 0, 2.8], "floorVerified": false}
     ],
     "segments": [
-      {"id": "nav-segment-001", "from": "waypoint-entry", "to": "waypoint-inspect-001", "traversability": "unknown", "sourceSupport": "partial", "usesExplorationCorrection": true, "correctionIds": ["correction-floor-001"]}
+      {"id": "nav-segment-001", "from": "waypoint-entry", "to": "waypoint-inspect-001", "polylineAsset": [[0, 0, 3], [2.1, 0, 2.8]], "traversability": "unknown", "sourceSupport": "partial", "usesExplorationCorrection": true, "correctionIds": ["correction-floor-001"], "validatedAgainst": null}
     ],
     "corrections": [
-      {"id": "correction-floor-001", "kind": "floor_patch", "origin": "exploration_correction", "assetRevision": "assets-demo-r1", "description": "가상 예시: 탐사용 바닥 구멍 보정. 실제 현장 통행 가능성을 검증한 결과가 아니다."}
+      {"id": "correction-floor-001", "kind": "floor_patch", "origin": "exploration_correction", "assetRevision": "assets-demo-r1", "recordRevision": 1, "geometryAsset": {"type": "box", "center": [1, -0.02, 2.9], "halfExtents": [0.6, 0.02, 0.6]}, "description": "가상 예시: 원본 좌표계의 탐사용 바닥 구멍 보정. 게임 내 충돌·접지 및 실제 현장 통행 가능성을 검증한 결과가 아니다."}
     ]
   },
   "routes": [
@@ -131,6 +160,7 @@
       "waypointIds": ["waypoint-entry", "waypoint-inspect-001"],
       "segmentIds": ["nav-segment-001"],
       "validationStatus": "unverified",
+      "validatedAgainst": null,
       "pathClassification": "simulation",
       "showAsTraversablePath": false
     }
@@ -161,7 +191,7 @@
   "presentation": {
     "selectedHazardId": "hazard-001",
     "selectedEvidenceId": "evidence-001",
-    "effectPreset": "highlight_region",
+    "effectPreset": "show_evidence",
     "autoFocusAllowed": false,
     "reason": "형식 예시의 위치·검토 카메라는 검증되지 않았다. 실제 구현은 검증된 포커스 위치 또는 사용자 지정 후 이동한다."
   }

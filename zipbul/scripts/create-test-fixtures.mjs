@@ -1,0 +1,10 @@
+import {Document,NodeIO} from '@gltf-transform/core';
+import {execFileSync} from 'node:child_process';
+import fs from 'node:fs';
+const d=new Document(),b=d.createBuffer();
+const p=d.createAccessor().setType('VEC3').setArray(new Float32Array([-3,0,-3,3,0,-3,3,0,3,-3,0,3])).setBuffer(b);
+const i=d.createAccessor().setType('SCALAR').setArray(new Uint16Array([0,2,1,0,3,2])).setBuffer(b);
+const m=d.createMaterial().setBaseColorFactor([.5,.5,.5,1]).setDoubleSided(true);
+d.createScene().addChild(d.createNode().setMesh(d.createMesh().addPrimitive(d.createPrimitive().setAttribute('POSITION',p).setIndices(i).setMaterial(m))));
+fs.mkdirSync('output/upload-fixture',{recursive:true});await new NodeIO().write('output/upload-fixture/room.glb',d);
+execFileSync('ffmpeg',['-v','error','-f','lavfi','-i','color=c=gray:s=640x480:d=2','-c:v','libx264','-pix_fmt','yuv420p','-y','output/upload-fixture/video.mp4']);

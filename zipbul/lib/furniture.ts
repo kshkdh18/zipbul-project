@@ -1,0 +1,22 @@
+import * as T from 'three';
+import {RoundedBoxGeometry} from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import type {Enhancement} from './types';
+function plastic(color:number,roughness=.8){return new T.MeshStandardMaterial({color,roughness,metalness:0});}
+const white=plastic(0xd7d5ce,.72),edge=plastic(0xc7c5bd,.6),black=plastic(0x202528,.7),rubber=plastic(0x161a1c,.95),steel=new T.MeshStandardMaterial({color:0x8a9092,metalness:.72,roughness:.38}),red=plastic(0x892f35);
+function box(group:T.Group,size:[number,number,number],position:[number,number,number],mat:T.Material,round=.008){const m=new T.Mesh(round?new RoundedBoxGeometry(...size,2,round):new T.BoxGeometry(...size),mat);m.position.set(...position);m.castShadow=m.receiveShadow=true;group.add(m);return m;}
+function tube(group:T.Group,a:T.Vector3,b:T.Vector3,r:number,mat:T.Material){const diff=b.clone().sub(a),m=new T.Mesh(new T.CylinderGeometry(r,r,diff.length(),12),mat);m.position.copy(a).add(b).multiplyScalar(.5);m.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),diff.normalize());m.castShadow=m.receiveShadow=true;group.add(m);return m;}
+function cylinder(group:T.Group,r:number,h:number,p:[number,number,number],mat:T.Material){return tube(group,new T.Vector3(p[0],p[1]-h/2,p[2]),new T.Vector3(p[0],p[1]+h/2,p[2]),r,mat);}
+function wheel(group:T.Group,x:number,z:number){const m=new T.Mesh(new T.CylinderGeometry(.045,.045,.035,14),rubber);m.rotation.z=Math.PI/2;m.position.set(x,.052,z);m.castShadow=true;group.add(m);tube(group,new T.Vector3(x,.05,z),new T.Vector3(x,.105,z),.011,steel);}
+export function desk(){const g=new T.Group();box(g,[1.8,.034,.52],[0,.735,0],white,.012);box(g,[1.73,.018,.48],[0,.711,0],edge,.005);for(const x of [-.72,.72]){tube(g,new T.Vector3(x,.115,0),new T.Vector3(x,.711,0),.024,white);tube(g,new T.Vector3(x,.11,-.23),new T.Vector3(x,.11,.23),.024,white);wheel(g,x,-.215);wheel(g,x,.215);}tube(g,new T.Vector3(-.73,.59,0),new T.Vector3(.73,.59,0),.012,steel);return g;}
+export function chair(){const g=new T.Group();box(g,[.46,.05,.44],[0,.45,0],black,.055);
+  const shape=new T.Shape();shape.moveTo(-.21,0);shape.lineTo(.21,0);shape.quadraticCurveTo(.255,0,.25,.06);shape.lineTo(.22,.31);shape.quadraticCurveTo(.2,.36,0,.36);shape.quadraticCurveTo(-.2,.36,-.22,.31);shape.lineTo(-.25,.06);shape.quadraticCurveTo(-.255,0,-.21,0);
+  for(let row=0;row<4;row++)for(let col=0;col<10;col++){const hole=new T.Path();hole.absellipse(-.18+col*.04,.055+row*.044,.008,.008,0,Math.PI*2,true);shape.holes.push(hole);}
+  const back=new T.Mesh(new T.ExtrudeGeometry(shape,{depth:.021,bevelEnabled:true,bevelSegments:2,steps:1,bevelSize:.006,bevelThickness:.006}),black);back.position.set(0,.53,.19);back.rotation.x=-.13;back.castShadow=true;g.add(back);
+  for(const x of [-.18,.18]){for(const z of [-.16,.16]){tube(g,new T.Vector3(x,.105,z*1.15),new T.Vector3(x,.43,z),.013,black);wheel(g,x,z*1.15);}tube(g,new T.Vector3(x,.44,.15),new T.Vector3(x,.83,.25),.011,black);}return g;}
+export function lectern(){const g=new T.Group();box(g,[.87,.042,1.14],[0,1.02,0],white,.008);box(g,[.83,.034,1.12],[0,.045,0],white,.006);box(g,[.80,.034,1.08],[.01,.49,0],white,.005);
+  box(g,[.032,.96,1.13],[-.425,.53,0],white,.003);for(const z of [-.57,.57]){box(g,[.9,1.13,.035],[0,.59,z],white,.005);}
+  // Raised side rails, open shelves and the observed tablet/microphone dock.
+  const screen=box(g,[.018,.24,.34],[-.22,1.18,-.08],plastic(0x11191d,.35),.008);screen.rotation.z=-.2;box(g,[.19,.018,.36],[-.10,1.05,-.08],edge,.003);
+  for(const z of [.35,.49]){box(g,[.17,.055,.13],[.24,1.055,z],black,.007);cylinder(g,.023,.15,[.24,1.16,z],black);cylinder(g,.030,.017,[.24,1.241,z],red);const head=new T.Mesh(new T.SphereGeometry(.035,20,14),new T.MeshStandardMaterial({color:0x505559,roughness:.78,metalness:.3}));head.position.set(.24,1.28,z);head.castShadow=true;g.add(head);for(let i=0;i<6;i++){const ring=new T.Mesh(new T.TorusGeometry(.032*Math.sin((i+1)/7*Math.PI),.0015,3,22),black);ring.rotation.x=Math.PI/2;ring.position.set(.24,1.245+(i+1)*.009,z);g.add(ring);}}
+  cylinder(g,.035,.12,[-.20,1.10,.35],plastic(0xe7e6df,.25));box(g,[.16,.105,.16],[-.24,1.09,.10],plastic(0xd0cfca),.005);return g;}
+export function createFurniture(records:Enhancement[]){const group=new T.Group();for(const r of records){const m=r.kind==='desk'?desk():r.kind==='chair'?chair():lectern();m.position.set(...r.position);m.rotation.y=r.yaw;m.userData={entityId:r.entityId,enhancementId:r.id,sourceFrameIds:r.sourceFrameIds,provenance:r.provenance};group.add(m);}return group;}

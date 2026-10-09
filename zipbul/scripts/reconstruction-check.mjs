@@ -1,0 +1,11 @@
+import {chromium} from 'playwright';import fs from 'node:fs';import assert from 'node:assert/strict';
+const b=await chromium.launch({headless:false,args:['--use-angle=metal']});const p=await b.newPage({viewport:{width:1440,height:960}});const errors=[];p.on('pageerror',e=>errors.push(e.message));
+try{await p.goto('http://127.0.0.1:3000');await p.waitForFunction(()=>window.zipbulScene?.getInfo().ready,null,{timeout:90000});await p.evaluate(()=>window.advanceTime(20));
+let start=await p.evaluate(()=>window.zipbulScene.getCamera());await p.keyboard.down('KeyW');await p.evaluate(()=>window.advanceTime(500));await p.keyboard.up('KeyW');let end=await p.evaluate(()=>window.zipbulScene.getCamera());const movement=Math.hypot(...end.position.map((v,i)=>v-start.position[i]));assert.ok(movement>.8);await p.keyboard.down('KeyE');await p.evaluate(()=>window.advanceTime(300));await p.keyboard.up('KeyE');const rise=(await p.evaluate(()=>window.zipbulScene.getCamera())).position[1]-end.position[1];assert.ok(rise>.5);
+start=await p.evaluate(()=>window.zipbulScene.getCamera());const distance=c=>Math.hypot(...c.target.map((v,i)=>v-c.position[i]));await p.keyboard.press('Equal');end=await p.evaluate(()=>window.zipbulScene.getCamera());assert.ok(distance(end)<distance(start));
+await p.getByRole('button',{name:'보완 보기',exact:true}).click();await p.waitForTimeout(2000);
+const scene=await(await fetch('http://127.0.0.1:3001/api/scenes/scene-105bfbad-4a6f-4174-98ea-c10341cda210')).json();
+for(const index of [2,6,12,15,16,17,18]){await p.locator('.frame-strip button').nth(index).click();await p.evaluate(()=>window.advanceTime(30));await p.waitForTimeout(800);await p.screenshot({path:`output/rebuilt-${index}.png`});}
+await p.locator('#walk-mode').click();await p.locator('#walk-start').click();await p.keyboard.down('KeyW');await p.evaluate(()=>window.advanceTime(650));await p.keyboard.up('KeyW');const walk=await p.evaluate(()=>window.render_game_to_text());await p.keyboard.press('Escape');await p.screenshot({path:'output/rebuilt-walk.png'});
+const report={analysisMovement:movement,analysisRise:rise,zoom:true,walk:JSON.parse(walk),errors};fs.writeFileSync('output/reconstruction-results.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report));
+}finally{await b.close();}

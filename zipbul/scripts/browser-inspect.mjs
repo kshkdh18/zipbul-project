@@ -1,0 +1,13 @@
+import {chromium} from 'playwright';
+import fs from 'node:fs';
+const browser=await chromium.launch({headless:true});
+const page=await browser.newPage({viewport:{width:1440,height:960}});const errors=[];
+page.on('pageerror',e=>errors.push(e.stack));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+await page.goto('http://127.0.0.1:3000');await page.waitForFunction(()=>window.zipbulScene?.getInfo().ready,{},{timeout:60000});await page.waitForTimeout(2000);
+await page.screenshot({path:'output/analysis.png'});
+await page.locator('.frame-strip button').nth(2).click();await page.waitForTimeout(700);await page.screenshot({path:'output/room-original.png'});
+await page.getByRole('button',{name:'보완 보기',exact:true}).click();await page.waitForTimeout(1000);await page.screenshot({path:'output/room-enhanced.png'});
+console.log('GL',await page.evaluate(()=>{const gl=document.querySelector('canvas').getContext('webgl2');const d=gl.getExtension('WEBGL_debug_renderer_info');return gl.getParameter(d.UNMASKED_RENDERER_WEBGL);}));
+console.log('STATE',await page.evaluate(()=>window.render_game_to_text()));
+await page.locator('#walk-mode').click();await page.locator('#walk-start').click();await page.keyboard.down('KeyW');await page.waitForTimeout(1500);await page.keyboard.up('KeyW');await page.keyboard.press('Escape');await page.screenshot({path:'output/walk.png'});console.log('WALK',await page.evaluate(()=>window.render_game_to_text()));
+fs.writeFileSync('output/browser-errors.json',JSON.stringify(errors,null,2));console.log('ERRORS',errors);await browser.close();

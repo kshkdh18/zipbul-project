@@ -1,0 +1,12 @@
+{
+  "url": "https://zipbul.summit1123.co.kr",
+  "tunnel_name": "zipbul-macbook",
+  "tunnel_id": "3b26ef7e-d4ed-4ff7-860a-e0d5912ac34a",
+  "dns_target": "3b26ef7e-d4ed-4ff7-860a-e0d5912ac34a.cfargotunnel.com",
+  "origin": "http://localhost:8787",
+  "api_origin": "http://127.0.0.1:3001",
+  "build_directory": ".next-tunnel",
+  "launch_agents": ["com.zipbul.web", "com.zipbul.api", "com.zipbul.cloudflared"],
+  "verification_report": "output/tunnel/verification.json",
+  "verified_at": "2026-10-09T06:41:42.820Z"
+}

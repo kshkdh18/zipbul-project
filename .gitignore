@@ -239,3 +239,7 @@ poetry.toml
 pyrightconfig.json
 
 docs/Track1-짚불.pdf
+
+# Local presentation artifacts and verification output
+/.codex-artifacts/
+/output/
