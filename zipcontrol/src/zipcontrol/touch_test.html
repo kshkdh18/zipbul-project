@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Jipbul Touch Lab</title>
+<style>
+*{box-sizing:border-box;touch-action:none;user-select:none}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101b29;color:#edf4ff;font-family:system-ui,sans-serif}canvas{display:block;width:100%;height:100%}
+</style><canvas id="lab"></canvas>
+<script>
+const canvas=document.getElementById('lab'),ctx=canvas.getContext('2d');
+const token=new URLSearchParams(location.search).get('token');
+const loadId=new URLSearchParams(location.search).get('load');
+const pageId=crypto.randomUUID();
+let w=innerWidth,h=innerHeight,seq=0,maxActive=0,pending=[],flushing=false;
+const active=new Map(),trails=new Map(),recent=[];
+const colors=['#263648','#32d6b3','#4d8bff','#f6b940'];
+function layout(){return {width:w,height:h,dpr:devicePixelRatio,left:[w*.25,h*.62],right:[w*.75,h*.62],radius:Math.min(w*.19,h*.16)}}
+const durableKey='jipbul-events-'+token;
+let durable=[];try{durable=JSON.parse(localStorage.getItem(durableKey)||'[]')}catch(e){}
+function emit(kind,event={}){const item={seq:++seq,kind,t:performance.now(),page_id:pageId,load_id:loadId,active:active.size,maxActive,...event};pending.push(item);durable.push(item);if(durable.length>10000)durable=durable.slice(-10000);if(kind!=='move'){try{localStorage.setItem(durableKey,JSON.stringify(durable))}catch(e){}}}
+function resize(){w=innerWidth;h=innerHeight;canvas.width=Math.round(w*devicePixelRatio);canvas.height=Math.round(h*devicePixelRatio);ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);emit('ready',layout())}
+addEventListener('resize',resize);resize();
+function point(e){return {id:e.pointerId,pointerType:e.pointerType,x:e.clientX,y:e.clientY}}
+canvas.addEventListener('pointerdown',e=>{e.preventDefault();canvas.setPointerCapture(e.pointerId);active.set(e.pointerId,{...point(e),side:e.clientX<w/2?1:2});trails.set(e.pointerId,[[e.clientX,e.clientY]]);maxActive=Math.max(maxActive,active.size);emit('down',point(e));recent.unshift('DOWN #'+e.pointerId)});
+canvas.addEventListener('pointermove',e=>{if(!active.has(e.pointerId))return;e.preventDefault();active.set(e.pointerId,{...active.get(e.pointerId),...point(e)});const t=trails.get(e.pointerId);t.push([e.clientX,e.clientY]);if(t.length>200)t.shift();emit('move',point(e))});
+function end(e){if(!active.has(e.pointerId))return;e.preventDefault();active.delete(e.pointerId);emit(e.type==='pointercancel'?'cancel':'up',point(e));recent.unshift(e.type.toUpperCase()+' #'+e.pointerId)}
+canvas.addEventListener('pointerup',end);canvas.addEventListener('pointercancel',end);
+async function flush(){if(flushing||!pending.length)return;flushing=true;const batch=pending.splice(0,200);try{const r=await fetch('/events?token='+token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(batch)});if(!r.ok)throw Error(r.status)}catch(e){pending.unshift(...batch);if(pending.length>10000)pending=pending.slice(-10000)}finally{flushing=false}}
+setInterval(flush,30);setInterval(()=>emit('status',layout()),500);
+function draw(now){ctx.fillStyle='#101b29';ctx.fillRect(0,0,w,h);
+ let mask=0;for(const p of active.values())mask|=p.side;
+ ctx.fillStyle=colors[mask];ctx.fillRect(42,12,w-84,48);
+ // Four fixed magenta fiducials map CSS viewport coordinates to the received video.
+ ctx.fillStyle='#ff00ff';for(const x of [12,w-32])for(const y of [12,h-32])ctx.fillRect(x,y,20,20);
+ ctx.fillStyle='#edf4ff';ctx.font='bold 23px system-ui';ctx.fillText('JIPBUL / TOUCH LAB',24,104);
+ ctx.font='15px system-ui';ctx.fillStyle='#9bafc8';ctx.fillText('Android가 수신한 실제 포인터',24,132);
+ ctx.font='bold 40px system-ui';ctx.fillStyle='#edf4ff';ctx.fillText(active.size+' TOUCHES',24,196);
+ ctx.font='14px monospace';ctx.fillStyle='#9bafc8';ctx.fillText('MAX '+maxActive+'  EVENTS '+seq+'  RUN '+(loadId||'').slice(0,6),24,224);
+ const l=layout();for(const [i,c] of [l.left,l.right].entries()){ctx.strokeStyle=i?'#4d8bff':'#32d6b3';ctx.lineWidth=2;ctx.beginPath();ctx.arc(c[0],c[1],l.radius,0,Math.PI*2);ctx.stroke();ctx.fillStyle=ctx.strokeStyle;ctx.font='14px system-ui';ctx.fillText(i?'RIGHT':'LEFT',c[0]-20,c[1]+l.radius+26);ctx.beginPath();ctx.arc(c[0],c[1],4,0,Math.PI*2);ctx.fill()}
+ for(const [id,path] of trails){ctx.strokeStyle='#6c8099';ctx.lineWidth=2;ctx.beginPath();path.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.stroke()}
+ for(const [id,p] of active){ctx.fillStyle=p.side===1?'#32d6b3':'#4d8bff';ctx.beginPath();ctx.arc(p.x,p.y,18,0,Math.PI*2);ctx.fill();ctx.font='bold 14px monospace';ctx.fillText('#'+id,p.x+22,p.y-10)}
+ ctx.fillStyle='#9bafc8';ctx.font='12px monospace';recent.slice(0,3).forEach((s,i)=>ctx.fillText(s,24,h-94+i*17));recent.splice(8);
+ ctx.fillStyle='#32d6b3';ctx.fillRect(42,h-42,(w-84)*((now%2000)/2000),4);
+ requestAnimationFrame(draw)}requestAnimationFrame(draw);
+</script></html>
