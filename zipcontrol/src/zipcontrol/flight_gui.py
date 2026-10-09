@@ -22,12 +22,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .astra import Astra
 from .camera import CameraStore, camera_rect
 from .flight_profile import AXES, DEFAULT_AXES, FlightProfile, FlightProfileStore, anchor
 from .guard import GuardBridge
+from .guidance import GuidanceMission as Mission
+from .luna import LunaDecider
 from .manual import ManualHold
-from .mission import Mission
+from .planning import AstraPlanner
 
 LABELS = {
     "yaw": "회전 (+우회전)",
@@ -65,13 +66,21 @@ class FlightPanel(QWidget):
         self.axis_button = None
         self.last_error = ""
         box = QVBoxLayout(self)
-        self.note = QLabel("Astra · 이동·회전·고도 조절\nAI 드래그 100% · 판단당 2초 · 손으로 이동하는 시연")
+        self.note = QLabel("Astra 계획 · Luna Decisions 조작\nAI 드래그 100% · 판단당 최대 2초")
         self.note.setWordWrap(True)
         box.addWidget(self.note)
         self.goal = QTextEdit()
         self.goal.setPlaceholderText("목표 예: 빨간 의자가 화면 중앙에 오도록 구도를 맞춰")
         self.goal.setFixedHeight(100)
         box.addWidget(self.goal)
+        self.controller_mode = QComboBox()
+        self.controller_mode.addItem("Astra 계획 + Luna 조작", "hierarchical")
+        self.controller_mode.addItem("Luna 직접 실행", "direct")
+        box.addWidget(self.controller_mode)
+        self.subgoal_status = QLabel("현재 하위 목표 · 임무 시작 후 표시됩니다.")
+        self.subgoal_status.setWordWrap(True)
+        self.subgoal_status.setFixedWidth(355)
+        box.addWidget(self.subgoal_status)
         self.observe_only = QCheckBox("AI 관찰 전용 — AI 명령은 실행하지 않음")
         self.observe_only.setChecked(False)
         box.addWidget(self.observe_only)
@@ -98,7 +107,9 @@ class FlightPanel(QWidget):
         self.manual_strength.setDecimals(0)
         self.manual_strength.setValue(100)
         self.manual_strength.setSuffix(" %")
-        self.manual_strength.setToolTip("수동과 AI에 함께 적용합니다. AI는 방향과 시간을 결정합니다.")
+        self.manual_strength.setToolTip(
+            "수동과 AI에 함께 적용합니다. Luna는 방향을 선택하고 명령은 최대 2초입니다."
+        )
         limits.addRow("드래그 크기 (수동·AI)", self.manual_strength)
         self.manual_seconds = QDoubleSpinBox()
         self.manual_seconds.setRange(1, 10)
@@ -209,7 +220,7 @@ class FlightPanel(QWidget):
                 if self.mission and self.mission.executor.running:
                     self.mission.set_camera_roi(roi)
                 self.camera_store.save(self.window.bridge.adb.serial, frame.width, frame.height, roi)
-                self.status.setText("카메라 영역만 Astra에 전달합니다. 영상 미리보기를 확인하세요.")
+                self.status.setText("카메라 영역만 AI에 전달합니다. 영상 미리보기를 확인하세요.")
             except (ValueError, OSError) as exc:
                 self.status.setText(str(exc))
             self.roi_points = None
@@ -340,13 +351,20 @@ class FlightPanel(QWidget):
             if frame is None:
                 raise ValueError("Android의 최신 화면이 필요합니다.")
             camera_rect(self.roi, frame.width, frame.height)
-            provider = Astra()
+            provider = LunaDecider()
+            try:
+                planner = AstraPlanner()
+            except Exception:
+                provider.close()
+                raise
             self.mission = Mission(
                 self.window.bridge,
                 provider,
+                planner,
                 self.goal.toPlainText(),
-                not self.observe_only.isChecked(),
-                self.profile,
+                live=not self.observe_only.isChecked(),
+                profile=self.profile,
+                mode=self.controller_mode.currentData(),
                 camera_roi=self.roi,
                 drag_strength=self.manual_strength.value() / 100,
                 stream=getattr(self.window, "command_stream", None),
@@ -355,6 +373,7 @@ class FlightPanel(QWidget):
                 self.mission.start(require_ui=False)
             except Exception:
                 provider.close()
+                planner.close()
                 raise
         except Exception as exc:
             self.last_error = str(exc)
@@ -413,7 +432,7 @@ class FlightPanel(QWidget):
             self.drag_info.setText("L/R 보정 후 요청 이동 거리를 표시합니다.")
         self.window.preview.requested_targets = points
         self.note.setText(
-            f"Astra · 이동·회전·고도 조절\nAI 드래그 {self.manual_strength.value():g}% · 판단당 2초 · 손으로 이동하는 시연"
+            f"Astra 계획 · Luna Decisions 조작\nAI 드래그 {self.manual_strength.value():g}% · 판단당 최대 2초 · 손으로 이동"
         )
         ready = bool(b and not b.error and b.latest_frame() is not None and not self.window.busy)
         calibrated = ready and b.controller.sticks is not None
@@ -429,6 +448,7 @@ class FlightPanel(QWidget):
             "AI 관찰 시작" if self.observe_only.isChecked() else "AI 임무 시작 · 실제 입력"
         )
         self.goal.setEnabled(not busy)
+        self.controller_mode.setEnabled(not busy)
         self.observe_only.setEnabled(not busy)
         self.roi_button.setEnabled(ready and not self.axis_testing)
         self.profile_button.setEnabled(calibrated and not busy)
@@ -449,9 +469,18 @@ class FlightPanel(QWidget):
             message = self.mission.message or self.mission.executor.reason
             if message.startswith("need_operator: "):
                 message = "AI 인계 요청 (화면 판단): " + message.removeprefix("need_operator: ")
+            subgoal = self.mission.subgoal
+            self.subgoal_status.setText(
+                f"현재 목표: {subgoal.goal}\n완료 조건: {subgoal.completion_criteria}"
+                if subgoal
+                else "Astra가 현재 하위 목표를 계획합니다."
+            )
+            astra_count = sum(r["stage"] == "astra" for r in self.mission.records)
+            luna_count = sum(r["stage"] == "luna" for r in self.mission.records)
+            mode = "Astra + Luna" if self.mission.mode == "hierarchical" else "Luna 직접"
             self.status.setText(
-                f"{self.mission.state} · {message}\n"
-                f"판단 {len(self.mission.decisions)}회 · 만료 {self.mission.executor.expirations}회\n"
+                f"{mode} · {self.mission.state_label} · {message}\n"
+                f"계획 {astra_count}회 · Luna {luna_count}회 · 만료 {self.mission.executor.expirations}회\n"
                 f"기록: {self.mission.journal.path}"
             )
         if self.last_error:

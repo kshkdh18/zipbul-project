@@ -17,6 +17,18 @@ from .protocol import read_exact
 PROTOCOL = "jipbul-guard-4"
 
 
+class GuardRejected(RuntimeError):
+    """Keep the device's first disarm cause even when a later request says 'not armed'."""
+
+    def __init__(self, status, diagnostics):
+        self.status = dict(status)
+        self.diagnostics = diagnostics
+        cause = diagnostics.get("first_disarm") or {}
+        reason = cause.get("reason", status["reason"])
+        detail = f" ({status['reason']})" if reason != status["reason"] else ""
+        super().__init__("Android guard: " + reason + detail)
+
+
 def targets(left, right, limit=1.0):
     result = []
     for xy in (left, right):
@@ -42,9 +54,11 @@ class GuardClient:
         self.request_id = 0
         self.command_id = 0
         self.responses = {}
+        self.operations = {}
         self.status = {}
         self.error = None
         self.events = []
+        self.first_disarm = None
         self.closed = False
         self.thread = threading.Thread(target=self._read, name="guard-events", daemon=True)
         self.thread.start()
@@ -64,8 +78,22 @@ class GuardClient:
                 if status.get("protocol") != PROTOCOL:
                     raise ValueError("Guard identity mismatch")
                 with self.condition:
+                    was_armed = self.status.get("armed", False)
                     self.status = status
-                    self.events.append({**status, "host_received_at": time.monotonic()})
+                    event = {
+                        **status,
+                        "host_received_at": time.monotonic(),
+                        "operation": self.operations.pop(status["request_id"], "device_event"),
+                    }
+                    if status.get("armed"):
+                        self.first_disarm = None
+                    elif (
+                        was_armed
+                        and self.first_disarm is None
+                        and status.get("reason") not in ("rearm", "release", "stop", "rejected")
+                    ):
+                        self.first_disarm = dict(event)
+                    self.events.append(event)
                     self.events = self.events[-3000:]
                     if status["request_id"]:
                         self.responses[status["request_id"]] = status
@@ -81,8 +109,15 @@ class GuardClient:
         with self.send_lock:
             if self.error or self.closed:
                 raise RuntimeError(self.error or "Guard closed")
+            if op == "arm":
+                with self.condition:
+                    self.first_disarm = None
             self.request_id += 1
             request_id = self.request_id
+            with self.condition:
+                self.operations[request_id] = op
+                if len(self.operations) > 100:
+                    self.operations.pop(next(iter(self.operations)))
             message = json.dumps({"op": op, "request_id": request_id, **values}, allow_nan=False).encode()
             # A wedged writer must not block the UI indefinitely. Device leases remain independent.
             import select
@@ -111,7 +146,7 @@ class GuardClient:
                 self.condition.wait(remaining)
             status = self.responses.pop(request_id)
         if not status["ok"] or not status["injection_ok"]:
-            raise RuntimeError("Android guard: " + status["reason"])
+            raise GuardRejected(status, self.diagnostics())
         return status
 
     def arm(self, sticks, package="dji.go.v5"):
@@ -159,6 +194,14 @@ class GuardClient:
     def snapshot(self):
         with self.condition:
             return dict(self.status)
+
+    def diagnostics(self):
+        with self.condition:
+            return {
+                "status": dict(self.status),
+                "first_disarm": dict(self.first_disarm) if self.first_disarm else None,
+                "recent_events": [dict(event) for event in self.events[-60:]],
+            }
 
     def close(self):
         if not self.closed:

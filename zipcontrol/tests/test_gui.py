@@ -29,9 +29,10 @@ def test_gui_passes_shared_drag_size_to_ai_mission_without_touching_phone(monkey
             self.settings = kwargs
 
         def start(self, require_ui):
-            starts.append((self.settings["drag_strength"], require_ui))
+            starts.append((self.settings["drag_strength"], require_ui, self.settings["mode"]))
 
-    monkeypatch.setattr(module, "Astra", lambda: SimpleNamespace(close=lambda: None))
+    monkeypatch.setattr(module, "LunaDecider", lambda: SimpleNamespace(close=lambda: None))
+    monkeypatch.setattr(module, "AstraPlanner", lambda: SimpleNamespace(close=lambda: None))
     monkeypatch.setattr(module, "Mission", FakeMission)
     panel = module.FlightPanel(
         SimpleNamespace(
@@ -44,8 +45,9 @@ def test_gui_passes_shared_drag_size_to_ai_mission_without_touching_phone(monkey
         panel.goal.setPlainText("inspect")
         panel.start()
         panel.manual_strength.setValue(55)
+        panel.controller_mode.setCurrentIndex(1)
         panel.start()
-        assert starts == [(1.0, False), (0.55, False)]
+        assert starts == [(1.0, False, "hierarchical"), (0.55, False, "direct")]
     finally:
         panel.close()
         app.processEvents()

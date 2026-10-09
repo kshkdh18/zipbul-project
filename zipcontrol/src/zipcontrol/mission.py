@@ -87,6 +87,11 @@ class Executor:
         self.expirations = 0
         self.submissions = 0
         self.continuous_updates = 0
+        self.direction_started = 0.0
+        self.model = "gpt-6-astra"
+        self.policy = POLICY_VERSION
+        self.last_tick_at = 0.0
+        self.max_tick_gap_ms = 0.0
         self.layout = None
         self.camera_roi = camera_roi if camera_roi is not None else (profile.camera if profile else None)
 
@@ -115,8 +120,8 @@ class Executor:
             self.journal.event(
                 "start",
                 live=self.live,
-                model="gpt-6-astra",
-                decision_policy=POLICY_VERSION,
+                model=self.model,
+                decision_policy=self.policy,
                 operator_drag_fraction=self.drag_strength,
                 mission_limit_s=None,
                 server_sha256=getattr(self.bridge.transport, "server_sha256", None),
@@ -130,6 +135,7 @@ class Executor:
         if self.command_started:
             self.command_seconds += max(0, min(self.clock(), self.deadline) - self.command_started)
         self.command_started = 0
+        self.direction_started = 0
         self.deadline = 0
         self.command = None
         self.generation += 1
@@ -150,8 +156,21 @@ class Executor:
             if not self.running:
                 return
             self.running = False
-            self._release(reason, disarm=True)
-            self.stop_event.set()
+            try:
+                if self.live and hasattr(self.bridge.guard, "diagnostics"):
+                    self.journal.event(
+                        "guard_diagnostics",
+                        reason=reason,
+                        last_heartbeat_age_ms=max(0, (self.clock() - self.last_heartbeat) * 1000),
+                        max_tick_gap_ms=self.max_tick_gap_ms,
+                        **self.bridge.guard.diagnostics(),
+                    )
+            finally:
+                # Diagnostic collection/writes must never prevent the physical release.
+                try:
+                    self._release(reason, disarm=True)
+                finally:
+                    self.stop_event.set()
 
     def neutral(self, reason):
         with self.lock:
@@ -163,6 +182,9 @@ class Executor:
             if not self.running:
                 return
             now = self.clock()
+            if self.last_tick_at:
+                self.max_tick_gap_ms = max(self.max_tick_gap_ms, (now - self.last_tick_at) * 1000)
+            self.last_tick_at = now
             frame = self.bridge.latest_frame()
             if self.bridge.error or frame is None or now - frame.decoded_at > 0.5:
                 self.stop("video_stale_or_disconnected")
@@ -171,7 +193,10 @@ class Executor:
                 self.stop("geometry_changed")
                 return
             if self.live and not self.bridge.guard.snapshot().get("armed"):
-                self.stop("android_disarmed")
+                guard = self.bridge.guard
+                diagnostics = guard.diagnostics() if hasattr(guard, "diagnostics") else {}
+                cause = diagnostics.get("first_disarm") or guard.snapshot()
+                self.stop("android_disarmed: " + cause.get("reason", "unknown"))
                 return
             if self.deadline and now >= self.deadline:
                 self.expirations += 1
@@ -211,7 +236,7 @@ class Executor:
                 "observation_id": oid,
                 "goal": goal,
                 "mode": "LIVE" if self.live else "OBSERVATION_ONLY",
-                "decision_policy": POLICY_VERSION,
+                "decision_policy": self.policy,
                 "operator_drag_fraction": self.drag_strength,
                 "stick_command_semantics": "nonzero direction scaled to operator_drag_fraction",
                 "completion_verification": verification,
@@ -221,6 +246,9 @@ class Executor:
                 "frame_decoded_at": frame.decoded_at,
                 "observation_at": self.clock(),
                 "current_command": self.command,
+                "continuous_hold_ms": max(0, (self.clock() - self.direction_started) * 1000)
+                if self.command
+                else 0,
                 "command_remaining_ms": max(0, (self.deadline - self.clock()) * 1000),
                 "axis_mapping_screen_lx_ly_rx_ry": self.profile.axes
                 if self.profile
@@ -246,7 +274,7 @@ class Executor:
             and observation.id == self.last_observation
         )
 
-    def submit(self, observation, arguments):
+    def submit(self, observation, arguments, *, source="ai", context=None):
         with self.lock:
             self.tick()  # deadlines and stale video win over model delivery
             if not self.valid(observation) or arguments["observation_id"] != observation.id:
@@ -254,6 +282,9 @@ class Executor:
             parse_decision("command_sticks", arguments)
             left, right = directed_targets(arguments["left_xy"], arguments["right_xy"], self.drag_strength)
             command = {**arguments, "left_xy": left, "right_xy": right}
+            sent_at = self.clock()
+            event = None
+            status = None
             if self.live:
                 status, event = execute_command(
                     self.bridge,
@@ -262,11 +293,12 @@ class Executor:
                     command["valid_for_ms"],
                     stream=self.stream,
                     reason=command["reason"],
+                    source=source,
                     axes=self.profile.axes if self.profile else DEFAULT_AXES,
                 )
                 if event:
-                    self.journal.event("execution_event", event=asdict(event))
-                self.journal.event("command_ack", status=status)
+                    self.journal.event("execution_event", event=asdict(event), context=context)
+                self.journal.event("command_ack", status=status, context=context)
                 # Use a conservative host deadline; device clock is authoritative.
                 duration = max(0, status["expires_at_ms"] - status["device_time_ms"]) / 1000
             else:
@@ -275,9 +307,13 @@ class Executor:
             self.submissions += 1
             if self.command_started:
                 self.command_seconds += max(0, min(self.clock(), self.deadline) - self.command_started)
+            if not self.command or (self.command["left_xy"], self.command["right_xy"]) != (left, right):
+                self.direction_started = self.clock()
             self.command = command
             self.command_started = self.clock()
-            self.deadline = self.command_started + duration
+            self.deadline = min(sent_at + command["valid_for_ms"] / 1000, self.command_started + duration)
+            if event:
+                self.deadline = min(self.deadline, event.deadline)
             self.last_observation = None  # an observation can authorize at most one command
             self.reason = "running"
             self.journal.event(
@@ -285,7 +321,9 @@ class Executor:
                 command=command,
                 requested_command=arguments,
                 operator_drag_fraction=self.drag_strength,
+                context=context,
             )
+            return event
 
 
 class Mission:
@@ -383,7 +421,7 @@ class Mission:
                 self.api_timeouts += 1
                 self.executor.stop("api_timeout")
                 self.provider.close()
-                raise TimeoutError("Astra response exceeded 15 seconds")
+                raise TimeoutError("AI response exceeded 15 seconds")
         if isinstance(result[0], Exception):
             raise result[0]
         return result[0]

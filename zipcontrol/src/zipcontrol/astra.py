@@ -137,7 +137,39 @@ def image_input(frame):
     }
 
 
+def observation_content(observation, previous=None):
+    """The shared image boundary for Responses and Decisions: cropped evidence only."""
+    if observation.metadata.get("camera_only") is not True:
+        raise ValueError("카메라 영역으로 자른 관찰만 AI에 전달할 수 있습니다.")
+    if previous and (
+        previous.metadata.get("camera_only") is not True
+        or previous.metadata.get("camera_roi") != observation.metadata.get("camera_roi")
+        or previous.frame.epoch != observation.frame.epoch
+        or previous.metadata.get("session_id") != observation.metadata.get("session_id")
+    ):
+        previous = None
+    content = [{"type": "input_text", "text": json.dumps(observation.metadata, ensure_ascii=False)}]
+    if previous:
+        content.extend(
+            [
+                {"type": "input_text", "text": f"Previous observation {previous.id}; not current:"},
+                image_input(previous.frame),
+            ]
+        )
+    content.extend(
+        [
+            {"type": "input_text", "text": f"CURRENT observation {observation.id}:"},
+            image_input(observation.frame),
+        ]
+    )
+    return content
+
+
 class Astra:
+    instructions = SYSTEM
+    tools = TOOLS
+    validate_decision = staticmethod(parse_decision)
+
     def __init__(self, client=None):
         key = os.getenv("OPENAI_API_KEY") or dotenv_values(".env.local").get("OPENAI_API_KEY")
         if client is None and not key:
@@ -146,36 +178,15 @@ class Astra:
         self.model = "gpt-6-astra"
 
     def decide(self, observation, previous=None):
-        if observation.metadata.get("camera_only") is not True:
-            raise ValueError("카메라 영역으로 자른 관찰만 Astra에 전달할 수 있습니다.")
-        if previous and (
-            previous.metadata.get("camera_only") is not True
-            or previous.metadata.get("camera_roi") != observation.metadata.get("camera_roi")
-            or previous.frame.epoch != observation.frame.epoch
-        ):
-            previous = None
-        content = [{"type": "input_text", "text": json.dumps(observation.metadata, ensure_ascii=False)}]
-        if previous:
-            content.extend(
-                [
-                    {"type": "input_text", "text": f"Previous observation {previous.id}; not current:"},
-                    image_input(previous.frame),
-                ]
-            )
-        content.extend(
-            [
-                {"type": "input_text", "text": f"CURRENT observation {observation.id}:"},
-                image_input(observation.frame),
-            ]
-        )
+        content = observation_content(observation, previous)
         started = time.monotonic()
         try:
             response = self.client.responses.create(
                 model=self.model,
                 reasoning={"effort": "low"},
-                instructions=SYSTEM,
+                instructions=self.instructions,
                 input=[{"role": "user", "content": content}],
-                tools=TOOLS,
+                tools=self.tools,
                 tool_choice="required",
                 parallel_tool_calls=False,
                 max_output_tokens=1200,
@@ -197,7 +208,7 @@ class Astra:
             raise ValueError("Exactly one complete function call required")
         call = calls[0]
         arguments = json.loads(call.arguments)
-        parse_decision(call.name, arguments)
+        self.validate_decision(call.name, arguments)
         usage = response.usage.model_dump() if response.usage else {}
         return Decision(call.name, arguments, latency, usage, response.id)
 

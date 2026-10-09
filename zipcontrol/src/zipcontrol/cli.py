@@ -13,13 +13,36 @@ def main():
         "command",
         nargs="?",
         default="gui",
-        choices=["gui", "capture", "validate", "validate-guard", "benchmark-astra", "validate-usb"],
+        choices=[
+            "gui",
+            "capture",
+            "validate",
+            "validate-guard",
+            "benchmark-astra",
+            "benchmark-luna",
+            "validate-usb",
+        ],
     )
     parser.add_argument("--serial")
     parser.add_argument("--server-path")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--seconds", type=float, default=3)
+    parser.add_argument(
+        "--image", type=Path, help="benchmark-luna: explicitly supplied already-cropped camera image"
+    )
+    parser.add_argument("--samples", type=int, default=20, help="benchmark-luna calls per model")
+    parser.add_argument("--goal", default="빨간 상자가 화면 중앙에 오도록 시점을 맞춰")
     args = parser.parse_args()
+
+    if args.command == "benchmark-luna":
+        from .benchmark import benchmark_luna
+
+        result = benchmark_luna(
+            args.serial, args.server_path, args.output, image=args.image, samples=args.samples, goal=args.goal
+        )
+        if result["status"] != "passed":
+            raise SystemExit(1)
+        return
 
     if args.command in ("validate-guard", "benchmark-astra", "validate-usb"):
         from .guard_validation import benchmark_astra, validate_guard, validate_usb

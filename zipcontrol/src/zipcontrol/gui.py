@@ -145,7 +145,7 @@ class Window(QMainWindow):
         self.last_sequence = 0
         self.output = output_directory("gui")
         self.workers = []
-        self.setWindowTitle("Zipcontrol · Astra 이동 가이드")
+        self.setWindowTitle("Zipcontrol · Astra + Luna 이동 가이드")
         self.resize(1500, 920)
         root = QWidget()
         self.setCentralWidget(root)
@@ -161,7 +161,7 @@ class Window(QMainWindow):
         self.preview.setMinimumSize(260, 300)
         self.preview.selected.connect(self.select_point)
         video_layout.addWidget(self.preview, 3)
-        crop_title = QLabel("Astra가 보는 영상")
+        crop_title = QLabel("AI가 보는 영상")
         crop_title.setStyleSheet("font-size: 16px; font-weight: 700; color: #60e5c3; padding-top: 8px")
         video_layout.addWidget(crop_title)
         self.camera_preview = Preview()
@@ -180,7 +180,7 @@ class Window(QMainWindow):
         lab_scroll.setWidgetResizable(True)
         lab_scroll.setWidget(lab_panel)
         self.tabs.addTab(lab_scroll, "연결 / 터치 실험")
-        title = QLabel("ZIPCONTROL\nAstra 이동 가이드")
+        title = QLabel("ZIPCONTROL\nAstra + Luna 이동 가이드")
         title.setStyleSheet("font-size: 25px; font-weight: 700; color: #eef4ff; margin-bottom: 12px")
         panel.addWidget(title)
         note = QLabel(
@@ -261,7 +261,7 @@ class Window(QMainWindow):
         flight_scroll = QScrollArea()
         flight_scroll.setWidgetResizable(True)
         flight_scroll.setWidget(self.flight)
-        self.tabs.addTab(flight_scroll, "Astra 목표 수행")
+        self.tabs.addTab(flight_scroll, "AI 목표 수행")
         QApplication.instance().installEventFilter(self)
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.tick)
