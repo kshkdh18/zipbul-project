@@ -1,0 +1,68 @@
+{
+  "revision": 1,
+  "hazards": {
+    "hazard-3e0e71efbc86": {
+      "id": "hazard-3e0e71efbc86",
+      "entityId": "entity-3e0e71efbc86",
+      "title": "계단 하부 포장블록의 균열형 선 확인",
+      "observation": "계단 하부 포장블록에 줄눈과 다른 방향으로 이어지는 불규칙한 선이 보인다. 블록의 들뜸이나 높이 차이는 확인되지 않는다.",
+      "hypothesis": "균열과 함께 블록의 풀림이나 단차가 있다면 계단 진입 시 발이 걸릴 수 있다.",
+      "priority": "low",
+      "reason": "계단 하부 접속면이므로 표면 흔적뿐 아니라 실제 단차와 고정 상태를 확인해야 한다.",
+      "check": "해당 선이 균열인지 확인하고 블록의 흔들림, 모서리 파손, 인접 면과의 단차를 점검한다.",
+      "evidence": [
+        {
+          "frameId": "frame-16650",
+          "bbox": [
+            0.299,
+            0.93,
+            0.143,
+            0.07
+          ],
+          "observation": "화면 하단의 난간 기둥 왼쪽 포장면에 불규칙한 균열형 선이 보인다.",
+          "id": "evidence-cf8d10f324a4"
+        }
+      ],
+      "anchor": {
+        "position": [
+          8.040091469836707,
+          -1.4760561519899966,
+          11.55646607189091
+        ],
+        "cameraPosition": [
+          6.609426,
+          -0.1502224,
+          11.311885
+        ],
+        "cameraTarget": [
+          8.040091469836707,
+          -1.4760561519899966,
+          11.55646607189091
+        ],
+        "status": "proposed",
+        "method": "depth",
+        "assetRevision": "70dc87f915b3ace9",
+        "surface": {
+          "mesh": "Zipscan world mesh",
+          "face": 1759,
+          "normal": [
+            -0.0667478433486817,
+            0.9977406610199937,
+            -0.007635362184340508
+          ]
+        }
+      },
+      "review": "unreviewed",
+      "origin": "astra",
+      "runId": "run-a2012d55-e04d-432e-bf8e-da1b4fc914f7"
+    }
+  },
+  "reviews": {
+    "hazard-3e0e71efbc86": {
+      "status": "confirmed",
+      "at": "2026-10-09T07:09:38.260Z"
+    }
+  },
+  "navigationRevision": 1,
+  "corrections": []
+}

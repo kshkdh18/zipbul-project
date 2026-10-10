@@ -148,3 +148,12 @@ Downloads 경로를 참조하던 원본 3개는 원본을 남겨 둔 채 `data/d
 - 이 최적화는 전송량을 줄이며 면 개수를 줄이지 않는다. 원본 스캔의 누락 면·왜곡 복구나 FPS 향상을 보장하지 않는다.
 
 검증 명령: `npm run typecheck`, `npm test`, `npm run test:browser`, `npm run test:guide`. 별도 서버에서는 `ZIPBUL_TEST_URL`과 `ZIPBUL_TEST_API`로 브라우저 검증 대상을 지정한다. 개발/미리보기 API 포트는 `ZIPBUL_API_PORT`, Next 프록시는 빌드 시 `ZIPBUL_API_ORIGIN`을 사용할 수 있다. 이번 변경은 로컬 미리보기에서 검증하며 기존 공개 배포는 별도 반영이 필요하다.
+
+## GitHub 공유 데모 데이터
+
+18층·1층의 압축 GLB, 충돌 모델, 근거 이미지, 저장된 분석·검토 이력을
+`demo-assets/`에 포함했다. `git lfs pull` 후 `npm run demo:setup`으로 로컬
+`data/scenes/`에 설치한다. 기존 현장은 덮어쓰지 않는다.
+원본 영상과 비압축 원본 GLB는 제외했으므로 전체 영상 재생·영상 재분석과
+원본 GLB 다운로드에는 별도 원본이 필요하다. 자세한 실행은
+[공유 데모 안내](demo-assets/README.md)를 참고한다.

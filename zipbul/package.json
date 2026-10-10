@@ -12,7 +12,8 @@
     "test:guide": "node scripts/guide-e2e.mjs",
     "test": "tsx --test tests/*.test.ts sites/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "test:browser": "node scripts/e2e.mjs && node scripts/upload-smoke.mjs && node --import tsx scripts/physics-e2e.mjs"
+    "test:browser": "node scripts/e2e.mjs && node scripts/upload-smoke.mjs && node --import tsx scripts/physics-e2e.mjs",
+    "demo:setup": "node scripts/setup-demo.mjs"
   },
   "dependencies": {
     "@dagrejs/dagre": "^3.1.1",

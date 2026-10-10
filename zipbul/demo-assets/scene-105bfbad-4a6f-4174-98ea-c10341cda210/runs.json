@@ -1,0 +1,143 @@
+[
+  {
+    "id": "run-83fe8c2f-16a7-407a-82bd-2d654a51c075",
+    "model": "gpt-6-astra",
+    "status": "completed",
+    "phase": "표본 분석 완료",
+    "frameIds": [
+      "frame-1",
+      "frame-451",
+      "frame-901",
+      "frame-1351",
+      "frame-1801",
+      "frame-2251"
+    ],
+    "completedFrameIds": [
+      "frame-1",
+      "frame-451",
+      "frame-901",
+      "frame-1351",
+      "frame-1801",
+      "frame-2251"
+    ],
+    "providerIds": [
+      "resp_04088cb69829610c006ac86648708487d1b3c0d14fc0b17727"
+    ],
+    "startedAt": "2026-10-09T03:57:58.710Z",
+    "resultCount": 2,
+    "usage": {
+      "input_tokens": 9182,
+      "output_tokens": 1962
+    },
+    "finishedAt": "2026-10-09T03:58:41.207Z"
+  },
+  {
+    "id": "run-ccd4f149-aeb9-43f5-9fc8-913cbb4a67cd",
+    "model": "gpt-6-astra",
+    "status": "completed",
+    "phase": "표본 분석 완료",
+    "frameIds": [
+      "frame-2701",
+      "frame-3151",
+      "frame-3601",
+      "frame-4051",
+      "frame-4501",
+      "frame-4951",
+      "frame-5401",
+      "frame-5850",
+      "frame-6300",
+      "frame-6750",
+      "frame-7200",
+      "frame-7650",
+      "frame-8100"
+    ],
+    "completedFrameIds": [
+      "frame-2701",
+      "frame-3151",
+      "frame-3601",
+      "frame-4051",
+      "frame-4501",
+      "frame-4951",
+      "frame-5401",
+      "frame-5850",
+      "frame-6300",
+      "frame-6750",
+      "frame-7200",
+      "frame-7650",
+      "frame-8100"
+    ],
+    "providerIds": [
+      "resp_02c006b140cdc487006ac8688113dc87d19245bf66af6a6d9d",
+      "resp_08235b8a79d849e0006ac868aaba6c87d1a478ef631f394cca",
+      "resp_07a02605c3bb3200006ac868e3cba887d19dd3717a11b48ea2"
+    ],
+    "startedAt": "2026-10-09T04:07:27.371Z",
+    "resultCount": 2,
+    "usage": {
+      "input_tokens": 20614,
+      "output_tokens": 4868
+    },
+    "finishedAt": "2026-10-09T04:09:18.728Z"
+  },
+  {
+    "id": "run-ada4d6d6-04b1-4dfb-bf06-b98642f55eee",
+    "model": "gpt-6-astra",
+    "status": "completed",
+    "phase": "표본 분석 완료",
+    "frameIds": [
+      "frame-1",
+      "frame-451",
+      "frame-901",
+      "frame-1351",
+      "frame-1801",
+      "frame-2251",
+      "frame-2701",
+      "frame-3151",
+      "frame-3601",
+      "frame-4051",
+      "frame-4501",
+      "frame-4951",
+      "frame-5401",
+      "frame-5850",
+      "frame-6300",
+      "frame-6750",
+      "frame-7200",
+      "frame-7650",
+      "frame-8100"
+    ],
+    "completedFrameIds": [
+      "frame-1",
+      "frame-451",
+      "frame-901",
+      "frame-1351",
+      "frame-1801",
+      "frame-2251",
+      "frame-2701",
+      "frame-3151",
+      "frame-3601",
+      "frame-4051",
+      "frame-4501",
+      "frame-4951",
+      "frame-5401",
+      "frame-5850",
+      "frame-6300",
+      "frame-6750",
+      "frame-7200",
+      "frame-7650",
+      "frame-8100"
+    ],
+    "providerIds": [
+      "resp_04ffe6b202e76ec6006ac87f419d6887d0822ce3e0d6c7a6ab",
+      "resp_0dca50a0ddeb384e006ac87f6bec9087d0949914ee3a827edd",
+      "resp_04d1199506f042d1006ac87f92123087d09c69b3b2353a342c",
+      "resp_01d0e213b9ac577e006ac87fb0e7c087d08a247106cfac29a7"
+    ],
+    "startedAt": "2026-10-09T05:44:31.840Z",
+    "resultCount": 5,
+    "usage": {
+      "input_tokens": 30122,
+      "output_tokens": 4642
+    },
+    "finishedAt": "2026-10-09T05:46:37.204Z"
+  }
+]
