@@ -26,6 +26,8 @@ with tempfile.TemporaryDirectory(prefix="zipscan-ui-") as temporary:
     manifest = json.loads((staging / "manifest.json").read_text())
     manifest["session_id"] = fixture_id
     manifest["started_at"] = "2020-01-01T00:00:00Z"
+    # A legacy Korean diagnostic must display in English without changing its stored text.
+    manifest["warnings"] = ["추적이 불안정했던 구간이 있습니다."]
     (staging / "manifest.json").write_text(json.dumps(manifest))
     destination = container / "Documents" / "Sessions" / fixture_id
     if destination.exists():

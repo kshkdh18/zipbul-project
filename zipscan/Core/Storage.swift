@@ -6,7 +6,7 @@ public final class JSONLinesWriter {
     private let handle: FileHandle
     private let encoder = JSON.encoder()
     public init(_ url: URL) throws {
-        guard FileManager.default.createFile(atPath: url.path, contents: nil) else { throw ScanError.invalid("파일 생성 실패: \(url.lastPathComponent)") }
+        guard FileManager.default.createFile(atPath: url.path, contents: nil) else { throw ScanError.invalid("Could not create file: \(url.lastPathComponent)") }
         handle = try FileHandle(forWritingTo: url)
     }
     public func append<T: Encodable>(_ value: T) throws {
@@ -54,14 +54,14 @@ public enum Files {
                 start = pending.index(after: newline)
             }
             if start > pending.startIndex { pending = Data(pending[start...]) }
-            guard pending.count < 4_194_304 else { throw ScanError.invalid("비정상적으로 긴 데이터 행") }
+            guard pending.count < 4_194_304 else { throw ScanError.invalid("Data record exceeds the size limit") }
         }
         // A missing newline means the last append may have been interrupted; never silently accept it.
-        guard pending.isEmpty else { throw ScanError.invalid("완료되지 않은 마지막 행: \(url.lastPathComponent)") }
+        guard pending.isEmpty else { throw ScanError.invalid("Incomplete final record: \(url.lastPathComponent)") }
     }
     public static func packRows(base: UnsafeRawPointer, width: Int, height: Int, bytesPerPixel: Int, bytesPerRow: Int) throws -> Data {
         guard width > 0, height > 0, width <= 16_384, height <= 16_384, bytesPerPixel > 0,
-              bytesPerRow >= width * bytesPerPixel else { throw ScanError.invalid("잘못된 픽셀 버퍼 크기") }
+              bytesPerRow >= width * bytesPerPixel else { throw ScanError.invalid("Invalid pixel buffer dimensions") }
         var output = Data(capacity: width * height * bytesPerPixel)
         for row in 0..<height { output.append(base.advanced(by: row * bytesPerRow).assumingMemoryBound(to: UInt8.self), count: width * bytesPerPixel) }
         return output
@@ -71,13 +71,13 @@ public enum Files {
 public enum Exporter {
     public static func export(session: URL, destination: URL) throws -> URL {
         let manifest = try JSON.load(SessionManifest.self, from: session.appendingPathComponent("manifest.json"))
-        guard [.complete, .partial, .failed].contains(manifest.status) else { throw ScanError.invalid("저장이 끝난 뒤 내보낼 수 있습니다.") }
-        guard UUID(uuidString: manifest.sessionId) != nil else { throw ScanError.invalid("잘못된 세션 ID") }
+        guard [.complete, .partial, .failed].contains(manifest.status) else { throw ScanError.invalid("Wait until saving finishes before exporting.") }
+        guard UUID(uuidString: manifest.sessionId) != nil else { throw ScanError.invalid("Invalid session ID") }
         let actual = try Files.payloads(session)
-        guard actual == manifest.files else { throw ScanError.invalid("파일이 변경되었습니다. 결과를 다시 검증해 주세요.") }
+        guard actual == manifest.files else { throw ScanError.invalid("The scan files have changed. Validate them again before exporting.") }
         try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
         let bytes = actual.reduce(UInt64(0)) { $0 + $1.bytes }
-        guard Files.available(destination) > Int64(bytes) + 268_435_456 else { throw ScanError.invalid("ZIP을 만들 저장 공간이 부족합니다. 원본은 보존되어 있습니다.") }
+        guard Files.available(destination) > Int64(bytes) + 268_435_456 else { throw ScanError.invalid("There is not enough space to create the ZIP. Your original scan is saved.") }
         let output = destination.appendingPathComponent(manifest.exportFileName)
         let temporary = destination.appendingPathComponent(".\(manifest.sessionId)-\(UUID().uuidString).zip")
         defer { try? FileManager.default.removeItem(at: temporary) }
@@ -88,14 +88,14 @@ public enum Exporter {
             try archive.addEntry(with: name, relativeTo: session, compressionMethod: name == "video.mp4" ? .none : .deflate)
         }
         let reader = try Archive(url: temporary, accessMode: .read)
-        guard Set(reader.map(\.path)) == Set(names) else { throw ScanError.invalid("ZIP 파일 목록 검증 실패") }
+        guard Set(reader.map(\.path)) == Set(names) else { throw ScanError.invalid("ZIP file list verification failed") }
         for entry in reader {
             var hash = SHA256()
             let crc = try reader.extract(entry, consumer: { hash.update(data: $0) })
-            guard crc == entry.checksum else { throw ScanError.invalid("ZIP CRC 검증 실패: \(entry.path)") }
+            guard crc == entry.checksum else { throw ScanError.invalid("ZIP CRC verification failed: \(entry.path)") }
             let expected = entry.path == "manifest.json" ? try Files.digest(session.appendingPathComponent(entry.path)) : actual.first { $0.name == entry.path }!.sha256
             let digest = hash.finalize().map { String(format: "%02x", $0) }.joined()
-            guard digest == expected else { throw ScanError.invalid("ZIP 체크섬 검증 실패: \(entry.path)") }
+            guard digest == expected else { throw ScanError.invalid("ZIP checksum verification failed: \(entry.path)") }
         }
         if FileManager.default.fileExists(atPath: output.path) {
             _ = try FileManager.default.replaceItemAt(output, withItemAt: temporary)

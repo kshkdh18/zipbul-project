@@ -46,7 +46,7 @@ struct StoredSession: Identifiable {
         loading = false
     }
     func delete(_ session: StoredSession) async {
-        guard session.directory.deletingLastPathComponent().standardizedFileURL == root.standardizedFileURL, UUID(uuidString: session.id) != nil else { error = "세션 경로가 올바르지 않습니다."; return }
+        guard session.directory.deletingLastPathComponent().standardizedFileURL == root.standardizedFileURL, UUID(uuidString: session.id) != nil else { error = "The scan folder is invalid."; return }
         let directory = session.directory, export = exports.appendingPathComponent(session.manifest.exportFileName)
         do {
             try await Task.detached(priority: .utility) {

@@ -1,6 +1,7 @@
 name: Zipscan
 options:
   bundleIdPrefix: com.zipbul
+  developmentLanguage: en
   deploymentTarget:
     iOS: '17.0'
   createIntermediateGroups: true
@@ -34,12 +35,13 @@ targets:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: Zipscan
+        CFBundleLocalizations: [en]
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen:
           UIColorName: ''
         UISupportedInterfaceOrientations: [UIInterfaceOrientationLandscapeRight]
-        NSCameraUsageDescription: 현장의 영상과 LiDAR 공간 데이터를 함께 수집합니다.
+        NSCameraUsageDescription: Zipscan uses the camera to record video and LiDAR spatial data during a scan.
         UIRequiresFullScreen: true
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true

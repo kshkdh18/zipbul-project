@@ -18,26 +18,26 @@ struct ResultScreen: View {
     var body: some View {
         VStack(spacing: 14) {
             HStack(spacing: 14) {
-                Button { player?.pause(); if let close { close() } else { dismiss() } } label: { Label("기록", systemImage: "chevron.left") }.disabled(exporting)
+                Button { player?.pause(); if let close { close() } else { dismiss() } } label: { Label("Scans", systemImage: "chevron.left") }.disabled(exporting)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(sessionDateLabel(session.manifest.startedAt)).font(.headline)
                     HStack { Text(session.manifest.status.title).foregroundStyle(Theme.status(session.manifest.status)).accessibilityIdentifier("session-status-\(session.manifest.status.rawValue)"); Text("· \(timeLabel(session.manifest.summary.duration))") }.font(.caption)
                 }
                 Spacer()
-                Picker("결과 보기", selection: $tab) { Text("3D 공간").tag(0); Text("영상").tag(1); Text("수집 품질").tag(2) }.pickerStyle(.segmented).frame(width: 265)
+                Picker("Scan results", selection: $tab) { Text("3D model").tag(0); Text("Video").tag(1); Text("Quality").tag(2) }.pickerStyle(.segmented).frame(width: 265)
                 Button { if zipURL != nil { showingShare = true } else { Task { await export(showShare: true) } } } label: {
-                    HStack { if exporting { ProgressView() }; Image(systemName: "square.and.arrow.up"); Text(exporting ? "ZIP 만드는 중" : "ZIP 내보내기") }
+                    HStack { if exporting { ProgressView() }; Image(systemName: "square.and.arrow.up"); Text(exporting ? "Creating ZIP" : "Export ZIP") }
                 }.buttonStyle(.borderedProminent).disabled(exporting).accessibilityIdentifier("export-zip")
             }
             Group {
                 if tab == 0 { MeshPreview(url: session.directory.appendingPathComponent("mesh.obj")) }
                 else if tab == 1 {
                     if session.manifest.summary.videoWritten > 0, let player { VideoPlayer(player: player).accessibilityIdentifier("recorded-video").clipShape(RoundedRectangle(cornerRadius: 16)) }
-                    else { unavailable("재생할 영상이 없습니다", detail: "수집 품질에서 저장 오류와 누락 내용을 확인해 주세요.") }
+                    else { unavailable("No video available", detail: "Check Quality for storage errors and missing data.") }
                 } else { quality }
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
-            if let exportError { Text(exportError).font(.caption).foregroundStyle(.yellow).accessibilityIdentifier("export-error") }
-            if zipURL != nil { Text("내보내기 완료 · 파일 앱 또는 Finder에서 ZIP을 가져갈 수 있습니다.").font(.caption).foregroundStyle(Theme.cyan).accessibilityIdentifier("export-complete") }
+            if let exportError { Text(DiagnosticText.english(exportError)).font(.caption).foregroundStyle(.yellow).accessibilityIdentifier("export-error") }
+            if zipURL != nil { Text("Export ready. Find the ZIP in Files or Finder.").font(.caption).foregroundStyle(Theme.cyan).accessibilityIdentifier("export-complete") }
         }.padding(20).background(Theme.background.ignoresSafeArea()).preferredColorScheme(.dark).tint(Theme.accent)
         .sheet(isPresented: $showingShare) { if let zipURL { ShareSheet(url: zipURL) } }
         .onChange(of: tab) { _, tab in if tab != 1 { player?.pause() } }
@@ -53,16 +53,16 @@ struct ResultScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(spacing: 12) {
-                    metric("영상", "\(session.manifest.summary.videoWritten.formatted()) 프레임", "누락 \(session.manifest.summary.videoDropped.formatted())")
-                    metric("깊이", "\(session.manifest.summary.depthWritten.formatted())회", "누락 \(session.manifest.summary.depthMissing.formatted())")
-                    metric("메쉬", "\(session.manifest.summary.meshFaces.formatted())면", "텍스처 없는 공간 형태")
+                    metric("Video", "\(session.manifest.summary.videoWritten.formatted(.number.locale(appLocale))) frames", "Missing: \(session.manifest.summary.videoDropped.formatted(.number.locale(appLocale)))")
+                    metric("Depth", "\(session.manifest.summary.depthWritten.formatted(.number.locale(appLocale))) samples", "Missing: \(session.manifest.summary.depthMissing.formatted(.number.locale(appLocale)))")
+                    metric("Mesh", "\(session.manifest.summary.meshFaces.formatted(.number.locale(appLocale))) faces", "Geometry without textures")
                 }
-                Text("\(session.manifest.settings.imageWidth) × \(session.manifest.settings.imageHeight) · 영상 \(session.manifest.settings.videoFps)fps · 깊이 \(session.manifest.settings.depthHz)Hz").font(.caption).foregroundStyle(.secondary)
-                Text("이 결과는 공간 수집 기록입니다. 위험도나 안전 여부를 판정하지 않습니다.").font(.subheadline)
-                ForEach(Array((session.manifest.warnings + session.manifest.errors + session.manifest.missingFiles.map { "필수 파일 누락: \($0)" }).enumerated()), id: \.offset) { _, message in
-                    Label(message, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.yellow).textSelection(.enabled)
+                Text("\(session.manifest.settings.imageWidth) × \(session.manifest.settings.imageHeight) · Video \(session.manifest.settings.videoFps) fps · Depth \(session.manifest.settings.depthHz) Hz").font(.caption).foregroundStyle(.secondary)
+                Text("This scan records the space. It does not determine whether the site is safe.").font(.subheadline)
+                ForEach(Array((session.manifest.warnings + session.manifest.errors + session.manifest.missingFiles.map { "Missing required file: \($0)" }).enumerated()), id: \.offset) { _, message in
+                    Label(DiagnosticText.english(message), systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.yellow).textSelection(.enabled)
                 }
-                if session.manifest.status == .complete { Label("필수 데이터와 영상·깊이 연결 검증을 통과했습니다.", systemImage: "checkmark.seal").foregroundStyle(Theme.cyan) }
+                if session.manifest.status == .complete { Label("Required data and video–depth alignment passed validation.", systemImage: "checkmark.seal").foregroundStyle(Theme.cyan) }
             }.padding(20)
         }.background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
     }
@@ -86,7 +86,7 @@ struct ResultScreen: View {
 }
 
 func unavailable(_ title: String, detail: String) -> some View {
-    VStack(spacing: 12) { Image(systemName: "cube.transparent").font(.largeTitle).foregroundStyle(Theme.cyan); Text(title).font(.headline); Text(detail).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center) }.frame(maxWidth: .infinity, maxHeight: .infinity).background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
+    VStack(spacing: 12) { Image(systemName: "cube.transparent").font(.largeTitle).foregroundStyle(Theme.cyan); Text(title).font(.headline); Text(DiagnosticText.english(detail)).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center) }.frame(maxWidth: .infinity, maxHeight: .infinity).background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
 }
 
 struct ShareSheet: UIViewControllerRepresentable {
@@ -104,9 +104,9 @@ struct MeshPreview: View {
         ZStack(alignment: .bottomLeading) {
             if let model {
                 OrbitView(model: model, reset: reset).clipShape(RoundedRectangle(cornerRadius: 16))
-                HStack { Text("드래그로 회전 · 두 손가락으로 확대").font(.caption).foregroundStyle(.secondary); Spacer(); Button { reset += 1 } label: { Label("시점 초기화", systemImage: "arrow.counterclockwise") }.buttonStyle(.bordered) }.padding(14)
-            } else if let error { unavailable("메쉬를 표시할 수 없습니다", detail: error) }
-            else { ProgressView("공간을 불러오고 있습니다").frame(maxWidth: .infinity, maxHeight: .infinity) }
+                HStack { Text("Drag to rotate · Pinch to zoom").font(.caption).foregroundStyle(.secondary); Spacer(); Button { reset += 1 } label: { Label("Reset view", systemImage: "arrow.counterclockwise") }.buttonStyle(.bordered) }.padding(14)
+            } else if let error { unavailable("Could not display the mesh", detail: error) }
+            else { ProgressView("Loading the 3D model").frame(maxWidth: .infinity, maxHeight: .infinity) }
         }.task {
             do { model = try await Task.detached(priority: .userInitiated) { try MeshScene.load(url) }.value }
             catch { self.error = error.localizedDescription }

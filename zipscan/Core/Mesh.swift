@@ -13,12 +13,12 @@ public struct MeshChunk {
 
 public enum OBJ {
     public static func write(_ chunks: [MeshChunk], to url: URL) throws -> (vertices: Int, faces: Int) {
-        guard FileManager.default.createFile(atPath: url.path, contents: nil) else { throw ScanError.invalid("메쉬 파일 생성 실패") }
+        guard FileManager.default.createFile(atPath: url.path, contents: nil) else { throw ScanError.invalid("Could not create the mesh file") }
         let handle = try FileHandle(forWritingTo: url); defer { try? handle.close() }
         try handle.write(contentsOf: Data("# Zipscan 1.0; meters; ARKit world coordinates\n".utf8))
         var base: UInt32 = 1, faces = 0
         for chunk in chunks {
-            guard chunk.indices.count % 3 == 0, chunk.indices.allSatisfy({ Int($0) < chunk.vertices.count }), chunk.vertices.allSatisfy({ $0.x.isFinite && $0.y.isFinite && $0.z.isFinite }) else { throw ScanError.invalid("메쉬 좌표 또는 인덱스가 잘못되었습니다.") }
+            guard chunk.indices.count % 3 == 0, chunk.indices.allSatisfy({ Int($0) < chunk.vertices.count }), chunk.vertices.allSatisfy({ $0.x.isFinite && $0.y.isFinite && $0.z.isFinite }) else { throw ScanError.invalid("Invalid mesh coordinates or indices.") }
             var text = ""
             for v in chunk.vertices {
                 text += "v \(v.x) \(v.y) \(v.z)\n"
@@ -36,21 +36,21 @@ public enum OBJ {
     public static func read(_ url: URL) throws -> MeshChunk {
         var vertices: [SIMD3<Float>] = [], indices: [UInt32] = []
         try Files.forEachLine(url) { data in
-            guard let line = String(data: data, encoding: .utf8) else { throw ScanError.invalid("메쉬 UTF-8 오류") }
+            guard let line = String(data: data, encoding: .utf8) else { throw ScanError.invalid("Invalid UTF-8 in mesh file") }
             let parts = line.split(whereSeparator: \.isWhitespace)
             guard let kind = parts.first else { return }
             if kind == "v" {
-                guard parts.count == 4, let x = Float(parts[1]), let y = Float(parts[2]), let z = Float(parts[3]), x.isFinite, y.isFinite, z.isFinite else { throw ScanError.invalid("메쉬 꼭짓점 오류") }
+                guard parts.count == 4, let x = Float(parts[1]), let y = Float(parts[2]), let z = Float(parts[3]), x.isFinite, y.isFinite, z.isFinite else { throw ScanError.invalid("Invalid mesh vertex") }
                 vertices.append(SIMD3(x, y, z))
             } else if kind == "f" {
-                guard parts.count == 4 else { throw ScanError.invalid("삼각형이 아닌 메쉬 면") }
+                guard parts.count == 4 else { throw ScanError.invalid("Mesh contains a non-triangular face") }
                 for item in parts.dropFirst() {
-                    guard let index = UInt32(item), index > 0 else { throw ScanError.invalid("메쉬 면 인덱스 오류") }
+                    guard let index = UInt32(item), index > 0 else { throw ScanError.invalid("Invalid mesh face index") }
                     indices.append(index - 1)
                 }
             }
         }
-        guard !vertices.isEmpty, !indices.isEmpty, indices.allSatisfy({ Int($0) < vertices.count }) else { throw ScanError.invalid("메쉬가 비어 있거나 면 인덱스가 잘못되었습니다.") }
+        guard !vertices.isEmpty, !indices.isEmpty, indices.allSatisfy({ Int($0) < vertices.count }) else { throw ScanError.invalid("The mesh is empty or contains invalid face indices.") }
         return MeshChunk(vertices: vertices, indices: indices)
     }
 }

@@ -40,11 +40,11 @@ public enum SessionStatus: String, Codable {
     case recording, finalizing, complete, partial, failed
     public var title: String {
         switch self {
-        case .recording: return "수집 중"
-        case .finalizing: return "저장 중"
-        case .complete: return "완료"
-        case .partial: return "일부 저장"
-        case .failed: return "저장 실패"
+        case .recording: return "Scanning"
+        case .finalizing: return "Saving"
+        case .complete: return "Complete"
+        case .partial: return "Partial"
+        case .failed: return "Failed"
         }
     }
 }
