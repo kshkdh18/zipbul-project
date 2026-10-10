@@ -2,9 +2,9 @@
   "project_id": "appgprj_6ac87c9f9cbc8191a3cc2b42483a3922",
   "url": "https://zipbul-field-explorer.summits.chatgpt.site",
   "audience": "public",
-  "deployment_id": "appgdep_6ac89333f7e48191afd16b4f54eeb323",
-  "version_id": "appgprj_6ac87c9f9cbc8191a3cc2b42483a3922~appgver_a9b266f2a7248191b3357f5beb959ebb",
-  "commit_sha": "f7f0cfa0d801ed571be2be0eca03ac76c892f305",
+  "deployment_id": "appgdep_6ac8a25391c481918acb9249bc0bf4d4",
+  "version_id": "appgprj_6ac87c9f9cbc8191a3cc2b42483a3922~appgver_1a605dd6d5f481918f548b44daac42ec",
+  "commit_sha": "4c87a99aa187575c02c1d1f557e618a600721265",
   "source_checkout": "/Users/gimdonghyeon/.codex/sites/zipbul-20261009",
   "bindings": {
     "d1": "DB",
@@ -18,8 +18,8 @@
   "environment_names": [
     "ZIPBUL_IMPORT_ORIGIN"
   ],
-  "deployed_at": "2026-10-09T07:10:01.175613+00:00",
-  "source_version": 4,
+  "deployed_at": "2026-10-09T08:14:31.419919+00:00",
+  "source_version": 5,
   "scene_ids": [
     "scene-105bfbad-4a6f-4174-98ea-c10341cda210",
     "scene-33a46c91-0ba7-44f8-99dc-bfe3588c539a"
@@ -29,5 +29,6 @@
     "import_report": "output/sites-import-verification.json",
     "upload_requires_processor": "https://zipbul.summit1123.co.kr",
     "new_paid_ai_call": false
-  }
+  },
+  "latest_change": "Restored animated recorded-camera fallback when selecting inspection items."
 }

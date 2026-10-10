@@ -16,7 +16,6 @@ let worker=fs.readFileSync(path.join(target,'build/sites-worker.ts'),'utf8');
 if(!worker.includes('handleApi')){worker='import {handleApi,type SiteEnv} from "../sites/api";\n'+worker;worker=worker.replace('    let binding = ctx.props?.CONNECTORS;','    if(new URL(request.url).pathname.startsWith("/api/"))return handleApi(request,env as SiteEnv,ctx);\n    let binding = ctx.props?.CONNECTORS;');}
 fs.writeFileSync(path.join(target,'build/sites-worker.ts'),worker);
 let ui=fs.readFileSync(path.join(target,'components/Workspace.tsx'),'utf8').replace('ZIPBUL / LOCAL','ZIPBUL / SITES');
-ui=ui.replace('const focused=viewer.current?.focus(h);\n    if(!focused&&f?.camera.length===4)viewer.current?.cameraFromFrame(f,true);','viewer.current?.focus(h);');
 fs.writeFileSync(path.join(target,'components/Workspace.tsx'),ui);
 const graph=path.join(target,'components/SpatialRelationGraph.tsx');if(fs.existsSync(graph))fs.writeFileSync(graph,fs.readFileSync(graph,'utf8').replace('element.dataset.azimuth','element!.dataset.azimuth'));
 let importUI=fs.readFileSync(path.join(source,'components/ImportScene.tsx'),'utf8');
