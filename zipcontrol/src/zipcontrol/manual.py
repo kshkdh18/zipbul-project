@@ -7,6 +7,8 @@ from dataclasses import asdict
 
 from .execution import execute_command
 from .flight_profile import DEFAULT_AXES
+from .i18n import error_text
+from .i18n import message as m
 
 
 def manual_targets(axis, sign, strength):
@@ -49,7 +51,7 @@ class ManualHold:
         self.last_command = None
         self.armed = False
         self.release_error = ""
-        self.reason = "버튼 해제"
+        self.reason = m("버튼 해제")
         self.target_points = [None, None]
         self.distance_px = 0.0
         self.command_count = 0
@@ -65,15 +67,15 @@ class ManualHold:
     def pressed(self):
         self.pressed_at = self.clock()
 
-    def stop(self, reason="버튼 해제"):
+    def stop(self, reason=None):
         # Invalidate before taking the lock so a pending arm cannot send a late command.
-        self.reason = reason
+        self.reason = m("버튼 해제") if reason is None else reason
         self.cancelled.set()
         with self.lock:
             try:
                 self._release()
             except Exception as exc:
-                self.release_error = str(exc)
+                self.release_error = error_text(exc)
 
     def _release(self):
         if self.armed:
@@ -90,17 +92,17 @@ class ManualHold:
         if self.cancelled.is_set():
             return False
         if now - self.pressed_at > 0.25:
-            self.reason = "버튼 상태 갱신 중단"
+            self.reason = m("버튼 상태 갱신 중단")
             return False
         if self.started is not None and now - self.started >= self.max_seconds:
-            self.reason = "설정한 최대 유지 시간 도달"
+            self.reason = m("설정한 최대 유지 시간 도달")
             return False
         frame = self.bridge.latest_frame()
         if self.bridge.error or frame is None or now - frame.decoded_at > 0.5:
-            self.reason = "영상 지연 또는 연결 종료"
+            self.reason = m("영상 지연 또는 연결 종료")
             return False
         if self.epoch is not None and frame.epoch != self.epoch:
-            self.reason = "화면 세션 변경"
+            self.reason = m("화면 세션 변경")
             return False
         return True
 
@@ -151,7 +153,7 @@ class ManualHold:
                     500,
                     stream=self.stream,
                     source="manual",
-                    reason="수동 조작",
+                    reason=m("수동 조작"),
                     axes=self.axes,
                 )
                 self.command_count += 1
@@ -177,16 +179,16 @@ class ManualHold:
                     if self.cancelled.wait(0.05):
                         break
         except Exception as exc:
-            self.reason = "축 확인 오류: " + str(exc)
+            self.reason = m("축 확인 오류: ") + error_text(exc)
         finally:
             with self.lock:
                 self.cancelled.set()
                 try:
                     self._release()
                 except Exception as exc:
-                    self.release_error = str(exc)
+                    self.release_error = error_text(exc)
         if self.release_error:
             self._record("finished", reason=self.reason, release_error=self.release_error)
-            return self.reason + " · 해제 확인 실패: " + self.release_error
+            return self.reason + m(" · 해제 확인 실패: ") + self.release_error
         self._record("finished", reason=self.reason)
-        return self.reason + " · 입력 종료"
+        return self.reason + m(" · 입력 종료")

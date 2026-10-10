@@ -14,6 +14,7 @@ from openai import OpenAI
 from PIL import Image
 
 from .guard import targets
+from .i18n import message as m
 
 POLICY_VERSION = "handheld-camera-1"
 
@@ -34,7 +35,8 @@ For command_sticks choose each stick's direction as a unit vector, [0,0] for neu
 The executor scales each nonzero vector to operator_drag_fraction (1.0 means full radius), so a
 small vector is NOT a smaller movement. Diagonals must have length <= 1. Commands last 100–2000ms;
 prefer a readable, deliberate direction for 1500–2000ms. The human may take longer to follow it.
-Use clear short Korean operational reasons, never hidden reasoning. Do not invent exact meters.
+Use clear short operational reasons in the requested response_language (Korean if unspecified),
+never hidden reasoning. Do not invent exact meters.
 Use observe to reassess without moving. need_operator is only for a genuinely unresolved goal
 question or unusable camera images after reobservation; explain the specific missing information.
 Do not require the person to reposition just because the full route is not visible: guide one step
@@ -140,7 +142,7 @@ def image_input(frame):
 def observation_content(observation, previous=None):
     """The shared image boundary for Responses and Decisions: cropped evidence only."""
     if observation.metadata.get("camera_only") is not True:
-        raise ValueError("카메라 영역으로 자른 관찰만 AI에 전달할 수 있습니다.")
+        raise ValueError(m("카메라 영역으로 자른 관찰만 AI에 전달할 수 있습니다."))
     if previous and (
         previous.metadata.get("camera_only") is not True
         or previous.metadata.get("camera_roi") != observation.metadata.get("camera_roi")
@@ -173,7 +175,7 @@ class Astra:
     def __init__(self, client=None):
         key = os.getenv("OPENAI_API_KEY") or dotenv_values(".env.local").get("OPENAI_API_KEY")
         if client is None and not key:
-            raise RuntimeError("OPENAI_API_KEY를 환경변수 또는 .env.local에 설정하세요.")
+            raise RuntimeError(m("OPENAI_API_KEY를 환경변수 또는 .env.local에 설정하세요."))
         self.client = client or OpenAI(api_key=key, timeout=15, max_retries=0)
         self.model = "gpt-6-astra"
 

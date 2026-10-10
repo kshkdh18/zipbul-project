@@ -3,6 +3,7 @@
 Run: QT_QPA_PLATFORM=cocoa uv run python tools/render_preview.py
 """
 
+import argparse
 import json
 import time
 from pathlib import Path
@@ -18,14 +19,28 @@ from zipcontrol.camera import crop_frame
 from zipcontrol.flight_profile import DEFAULT_AXES
 from zipcontrol.gui import Window, configure_application
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--language", choices=("en", "ko"), default="en")
+parser.add_argument("--output", type=Path, default=Path("artifacts/ui-preview"))
+args = parser.parse_args()
+output = args.output
+output.mkdir(parents=True, exist_ok=True)
+english = args.language == "en"
 app = QApplication([])
 configure_application(app)
-window = Window()
+window = Window(settings_path=output / "settings.json")
+window.language_combo.setCurrentIndex(window.language_combo.findData(args.language))
 window.timer.stop()
 window.resize(1500, 920)
 window.tabs.setCurrentIndex(1)
-window.flight.goal.setPlainText("빨간 상자가 화면 중앙에 오도록 시점을 맞춰")
-window.flight.status.setText("화면 검증용 합성 영상 · Android와 API 연결 없음")
+window.flight.goal.setPlainText(
+    "Center the red box in the camera view" if english else "빨간 상자가 화면 중앙에 오도록 시점을 맞춰"
+)
+window.flight.status.setText(
+    "Synthetic preview · No Android or API connection"
+    if english
+    else "화면 검증용 합성 영상 · Android와 API 연결 없음"
+)
 image = Image.new("RGB", (800, 1200), "#15212b")
 draw = ImageDraw.Draw(image)
 draw.rectangle((30, 190, 770, 730), fill="#c7cbd0")
@@ -42,8 +57,6 @@ frame = Frame(np.array(image), 1, time.monotonic(), time.monotonic(), 0, 1)
 window.preview.frame = frame
 window.camera_preview.frame = crop_frame(frame, [30, 190, 740, 540])
 window.show()
-output = Path("artifacts/ui-preview")
-output.mkdir(parents=True, exist_ok=True)
 Image.fromarray(window.camera_preview.frame.rgb).save(output / "camera.png")
 failures = []
 
@@ -56,7 +69,9 @@ def command():
         2000,
         {"expires_at_ms": 2000, "device_time_ms": 0},
         "ai",
-        "상자를 중앙에 맞추도록 오른쪽으로 돌며 앞으로 이동하세요.",
+        "Turn right and move forward to center the box."
+        if english
+        else "상자를 중앙에 맞추도록 오른쪽으로 돌며 앞으로 이동하세요.",
         DEFAULT_AXES,
         now,
     )
@@ -73,11 +88,14 @@ def capture():
     else:
         framebuffer.save(str(output / "scene.png"))
     window.grab().save(str(output / "window.png"))
+    window.tabs.setCurrentIndex(2)
+    window.grab().save(str(output / "options.png"))
     result = {
         "qml_ready": view.status() == QQuickWidget.Status.Ready,
         "framebuffer_size": [framebuffer.width(), framebuffer.height()],
         "synthetic_input": True,
         "android_connected": False,
+        "language": args.language,
         "errors": failures,
     }
     (output / "report.json").write_text(json.dumps(result, indent=2) + "\n")

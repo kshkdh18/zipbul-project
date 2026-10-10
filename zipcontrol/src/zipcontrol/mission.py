@@ -17,6 +17,8 @@ from .astra import POLICY_VERSION, parse_decision
 from .camera import camera_rect, crop_frame
 from .execution import execute_command
 from .flight_profile import DEFAULT_AXES
+from .i18n import error_text
+from .i18n import message as m
 from .stick_input import directed_targets, drag_fraction
 from .validation import output_directory
 
@@ -99,16 +101,16 @@ class Executor:
         with self.lock:
             frame = self.bridge.latest_frame()
             if frame is None or self.clock() - frame.decoded_at > 0.5:
-                raise RuntimeError("최신 화면이 필요합니다.")
+                raise RuntimeError(m("최신 화면이 필요합니다."))
             self.epoch = frame.epoch
             if self.profile is not None:
                 self.profile.validate()
             camera_rect(self.camera_roi, frame.width, frame.height)
             if self.live:
                 if not hasattr(self.bridge, "guard") or self.bridge.guard is None:
-                    raise RuntimeError("Android 입력 서버 연결이 필요합니다.")
+                    raise RuntimeError(m("Android 입력 서버 연결이 필요합니다."))
                 if not self.bridge.controller.sticks:
-                    raise ValueError("L/R 조이스틱 위치 보정이 필요합니다.")
+                    raise ValueError(m("L/R 조이스틱 위치 보정이 필요합니다."))
                 for stick in self.bridge.controller.sticks:
                     stick.validate(frame.width, frame.height)
                 self.bridge.arm("dji.go.v5")
@@ -145,7 +147,7 @@ class Executor:
                 status = self.bridge.guard.release(disarm)
                 self.journal.event("release_ack", status=status)
             except Exception as exc:
-                self.journal.event("release_failed", error=str(exc), physical_state="unknown")
+                self.journal.event("release_failed", error=error_text(exc), physical_state="unknown")
                 self.running = False
         if self.stream:
             self.stream.release(why, clear=why != "command_expired" or not self.running)
@@ -219,7 +221,7 @@ class Executor:
             try:
                 self.tick()
             except Exception as exc:
-                self.stop("executor_error: " + str(exc))
+                self.stop("executor_error: " + error_text(exc))
             if not self.running:
                 return
 
@@ -340,7 +342,7 @@ class Mission:
         stream=None,
     ):
         if not goal.strip():
-            raise ValueError("목표를 입력하세요.")
+            raise ValueError(m("목표를 입력하세요."))
         self.provider, self.goal = provider, goal.strip()
         self.journal = Journal(output)
         self.executor = Executor(
@@ -497,8 +499,8 @@ class Mission:
                 self.state = "paused"
                 self.message = self.executor.reason
         except Exception as exc:
-            self.stop("error: " + str(exc))
-            self.journal.event("error", message=str(exc))
+            self.stop("error: " + error_text(exc))
+            self.journal.event("error", message=error_text(exc))
         finally:
             self.executor.stop(self.message or "finished")
             self.provider.close()

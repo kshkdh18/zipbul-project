@@ -12,6 +12,7 @@ import numpy as np
 from PIL import Image
 
 from .control import Stick
+from .i18n import message as m
 
 AXES = ("yaw", "vertical", "lateral", "forward")
 DEFAULT_AXES = (("yaw", 1), ("vertical", -1), ("lateral", 1), ("forward", -1))
@@ -67,7 +68,7 @@ class FlightProfile:
     def capture_layout(cls, frame, sticks):
         """An in-memory reference of the current controls, never saved or called verified."""
         if not sticks or len(sticks) != 2:
-            raise ValueError("L/R 조이스틱 위치 보정이 필요합니다.")
+            raise ValueError(m("L/R 조이스틱 위치 보정이 필요합니다."))
         for stick in sticks:
             stick.validate(frame.width, frame.height)
         return cls(

@@ -3,16 +3,18 @@
 from dataclasses import dataclass
 
 from .flight_profile import AXES, DEFAULT_AXES
+from .i18n import message as m
+from .i18n import translate
 
 MOVEMENTS = {
-    "YAW_LEFT": ("yaw", -1, "왼쪽으로 회전"),
-    "YAW_RIGHT": ("yaw", 1, "오른쪽으로 회전"),
-    "ASCEND": ("vertical", 1, "위로 이동"),
-    "DESCEND": ("vertical", -1, "아래로 이동"),
-    "MOVE_LEFT": ("lateral", -1, "왼쪽으로 이동"),
-    "MOVE_RIGHT": ("lateral", 1, "오른쪽으로 이동"),
-    "FORWARD": ("forward", 1, "앞으로 이동"),
-    "BACKWARD": ("forward", -1, "뒤로 이동"),
+    "YAW_LEFT": ("yaw", -1, m("왼쪽으로 회전")),
+    "YAW_RIGHT": ("yaw", 1, m("오른쪽으로 회전")),
+    "ASCEND": ("vertical", 1, m("위로 이동")),
+    "DESCEND": ("vertical", -1, m("아래로 이동")),
+    "MOVE_LEFT": ("lateral", -1, m("왼쪽으로 이동")),
+    "MOVE_RIGHT": ("lateral", 1, m("오른쪽으로 이동")),
+    "FORWARD": ("forward", 1, m("앞으로 이동")),
+    "BACKWARD": ("forward", -1, m("뒤로 이동")),
 }
 ACTION_DESCRIPTIONS = {
     "YAW_LEFT": "Rotate the CAMERA to its LEFT. Fixed scene objects shift RIGHT in the image. "
@@ -62,13 +64,15 @@ class Subgoal:
             raise ValueError("Invalid allowed movement actions")
 
     @classmethod
-    def direct(cls, goal):
-        return cls(goal, "최신 영상에서 사용자의 목표가 달성됨", tuple(MOVEMENTS), goal)
+    def direct(cls, goal, language="ko"):
+        return cls(
+            goal, translate(m("최신 영상에서 사용자의 목표가 달성됨"), language), tuple(MOVEMENTS), goal
+        )
 
 
 class ActionAdapter:
     @staticmethod
-    def command(action, observation_id, subgoal, axes=DEFAULT_AXES):
+    def command(action, observation_id, subgoal, axes=DEFAULT_AXES, language="ko"):
         if action not in subgoal.allowed_actions or action not in MOVEMENTS:
             raise ValueError("Action is not an allowed movement")
         if (
@@ -87,5 +91,5 @@ class ActionAdapter:
             "right_xy": right if any(right) else None,
             "valid_for_ms": 2000,
             "observation_id": observation_id,
-            "reason": f"{label} · {subgoal.goal}"[:2000],
+            "reason": f"{translate(label, language)} · {subgoal.goal}"[:2000],
         }

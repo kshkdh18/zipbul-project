@@ -3,6 +3,7 @@
 import math
 
 from .guard import targets
+from .i18n import message as m
 
 
 def drag_fraction(value):
@@ -12,7 +13,7 @@ def drag_fraction(value):
         or not math.isfinite(value)
         or not 0.05 <= value <= 1.0
     ):
-        raise ValueError("드래그 크기는 보정 반경의 5~100%여야 합니다.")
+        raise ValueError(m("드래그 크기는 보정 반경의 5~100%여야 합니다."))
     return float(value)
 
 

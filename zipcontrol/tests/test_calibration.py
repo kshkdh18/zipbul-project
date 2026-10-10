@@ -76,7 +76,8 @@ def test_manual_gui_calibration_is_restored_on_new_connection_without_touch_comm
             calibrate=lambda left, right, f: c.calibrate(left, right, f.epoch),
         )
 
-    first = Window(calibration_path=path)
+    first = Window(calibration_path=path, settings_path=tmp_path / "settings.json")
+    first.i18n.set_language("ko")
     try:
         first.connected(bridge())
         first.preview.frame = frame
@@ -87,7 +88,8 @@ def test_manual_gui_calibration_is_restored_on_new_connection_without_touch_comm
         assert "저장 완료" in first.instructions.text()
     finally:
         first.close()
-    second = Window(calibration_path=path)
+    second = Window(calibration_path=path, settings_path=tmp_path / "settings.json")
+    second.i18n.set_language("ko")
     try:
         second.connected(bridge())
         assert second.bridge.controller.sticks == (Stick(200, 800, 45), Stick(600, 800, 50))
