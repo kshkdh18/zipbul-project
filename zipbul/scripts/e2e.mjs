@@ -1,23 +1,25 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
+const base=process.env.ZIPBUL_TEST_URL||'http://127.0.0.1:3000',apiBase=process.env.ZIPBUL_TEST_API||'http://127.0.0.1:3001';
+const prepare=p=>p.addInitScript(()=>{localStorage.setItem('zipbul-language','ko');localStorage.setItem('zipbul-guide-v1',JSON.stringify({checked:[],dismissed:true}));});
 const original='scene-105bfbad-4a6f-4174-98ea-c10341cda210',id='scene-e2e',dir=`data/scenes/${id}`;
 fs.mkdirSync(dir,{recursive:true});
 const source=JSON.parse(fs.readFileSync(`data/scenes/${original}/scene.json`,'utf8'));
-fs.writeFileSync(`${dir}/scene.json`,JSON.stringify({...source,id,title:'검증용 현장',createdAt:'2000-01-01'}));
+fs.writeFileSync(`${dir}/scene.json`,JSON.stringify({...source,id,meshUrl:source.meshUrl.replace(original,id),optimizedMeshUrl:source.optimizedMeshUrl?.replace(original,id),title:'검증용 현장',createdAt:'2000-01-01'}));
 fs.copyFileSync(`data/scenes/${original}/hazards.json`,`${dir}/hazards.json`);
 fs.rmSync(`${dir}/manual.json`,{force:true});
 const errors=[],results={};let browser;
 try {
  browser=await chromium.launch({headless:false,args:['--use-angle=metal']});
  const p=await browser.newPage({viewport:{width:1440,height:960}});p.on('pageerror',e=>errors.push(e.message));
- await p.goto(`http://127.0.0.1:3000/?scene=${id}`);
+ await prepare(p);await p.goto(`${base}/?scene=${id}`);
  await p.waitForFunction(()=>window.zipbulScene?.getInfo().ready,null,{timeout:90000});
  const before=await p.evaluate(()=>window.zipbulScene.getCamera());
  await p.locator('.hazard-card').first().click();
  assert.equal(await p.getByRole('button',{name:'대상 보기',exact:true}).isDisabled(),true);
  await p.waitForFunction(()=>!JSON.parse(window.render_game_to_text()).focusMoving);
- const initialScene=await(await fetch(`http://127.0.0.1:3001/api/scenes/${id}`)).json();
+ const initialScene=await(await fetch(`${apiBase}/api/scenes/${id}`)).json();
  const initialHazard=initialScene.hazards[0],evidenceFrame=initialScene.frames.find(f=>f.id===initialHazard.evidence[0].frameId);
  const expectedPosition=evidenceFrame?.camera.length===4?evidenceFrame.camera.slice(0,3).map(row=>row[3]):before.position;
  const actualPosition=await p.evaluate(()=>window.zipbulScene.getCamera().position);
@@ -35,7 +37,7 @@ try {
  assert.equal(await p.getByRole('button',{name:'대상 보기',exact:true}).isEnabled(),true);
  await p.locator('.review-section').getByRole('button',{name:'확인',exact:true}).click();
  await p.waitForTimeout(400);
- let snap=await (await fetch(`http://127.0.0.1:3001/api/scenes/${id}`)).json();
+ let snap=await (await fetch(`${apiBase}/api/scenes/${id}`)).json();
  assert.equal(snap.hazards[0].anchor.status,'verified');assert.equal(snap.hazards[0].review,'confirmed');results.manualMappingAndReview=true;
  await p.getByRole('button',{name:'전체 관계도',exact:true}).click();await p.waitForTimeout(1000);
  const expectedNodes=new Set([snap.id,...snap.hazards.flatMap(h=>[h.entityId,h.id,`action-${h.id}`,...h.evidence.map(e=>e.id)])]).size;
@@ -53,8 +55,8 @@ try {
  assert.ok(distance>.05,`Movement only ${distance}`);assert.ok(distance<2);assert.ok(moved.grounded);results.movement={distance,start:start.player,end:moved.player,grounded:moved.grounded};
  await p.keyboard.press('Escape');await p.waitForTimeout(300);assert.equal((await p.evaluate(()=>window.zipbulScene.getInfo())).paused,true);results.escapePauses=true;
  await p.screenshot({path:'output/e2e-walk.png'});
- const stale=await fetch(`http://127.0.0.1:3001/api/scenes/${id}/hazards/${snap.hazards[0].id}/review`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'confirmed',manualRevision:0})});assert.equal(stale.status,409);results.staleWriteRejected=true;
- const range=await fetch(`http://127.0.0.1:3001${source.videoUrl}`,{headers:{Range:'bytes=0-99'}});assert.equal(range.status,206);assert.equal((await range.arrayBuffer()).byteLength,100);results.videoRange=true;
+ const stale=await fetch(`${apiBase}/api/scenes/${id}/hazards/${snap.hazards[0].id}/review`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'confirmed',manualRevision:0})});assert.equal(stale.status,409);results.staleWriteRejected=true;
+ const range=await fetch(`${apiBase}${source.videoUrl}`,{headers:{Range:'bytes=0-99'}});assert.equal(range.status,206);assert.equal((await range.arrayBuffer()).byteLength,100);results.videoRange=true;
  assert.deepEqual(errors,[]);results.errors=errors;
  fs.writeFileSync('output/e2e-results.json',JSON.stringify(results,null,2));console.log(JSON.stringify(results,null,2));
 }finally{await browser?.close();fs.rmSync(dir,{recursive:true,force:true});}

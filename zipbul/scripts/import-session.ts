@@ -2,11 +2,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-import {NodeIO} from '@gltf-transform/core';
-import {ALL_EXTENSIONS} from '@gltf-transform/extensions';
-import {simplify, weld, textureCompress, prune, getBounds} from '@gltf-transform/functions';
+import {simplify, weld, prune, getBounds} from '@gltf-transform/functions';
 import {MeshoptSimplifier} from 'meshoptimizer';
-import sharp from 'sharp';
+import {optimizeDisplayGLB,meshIO,DISPLAY_PROFILE} from '../server/optimize-glb';
 import type {LocalScene,Frame,Vec3} from '../lib/types';
 
 export async function importSession(sourceDirectory:string, meshPath:string, forcedId?:string) {
@@ -23,7 +21,7 @@ export async function importSession(sourceDirectory:string, meshPath:string, for
   const j=JSON.parse(bytes.subarray(20,20+bytes.readUInt32LE(12)).toString());
   if([...(j.buffers||[]),...(j.images||[])].some(a=>a.uri&&!a.uri.startsWith('data:')))throw new Error('외부 파일 참조가 없는 내장형 GLB가 필요합니다.');
   const positions=j.meshes.flatMap((m:any)=>m.primitives.map((p:any)=>j.accessors[p.attributes.POSITION]));
-  const io=new NodeIO().registerExtensions(ALL_EXTENSIONS),doc=await io.readBinary(bytes);
+  const io=meshIO(),doc=await io.readBinary(bytes);
   const rootScene=doc.getRoot().getDefaultScene()||doc.getRoot().listScenes()[0];if(!rootScene||!positions.length)throw new Error('표시 가능한 메시 장면이 없습니다.');
   if(j.meshes.some((m:any)=>m.primitives.some((p:any)=>p.mode!==undefined&&p.mode!==4)))throw new Error('삼각형 메시 GLB를 내보내 주세요.');
   const bounds=getBounds(rootScene);if([...bounds.min,...bounds.max].some(v=>!Number.isFinite(v)))throw new Error('유효한 공간 범위를 읽지 못했습니다.');
@@ -39,9 +37,12 @@ export async function importSession(sourceDirectory:string, meshPath:string, for
   console.log(`Prepared ${frames.length} source frames. Preparing textures / collision geometry…`);
   const optimized=path.join(dir,'render.glb');const collision=path.join(dir,'collision.glb');
   const previous=await fs.readFile(path.join(dir,'scene.json'),'utf8').then(JSON.parse).catch(()=>null);
-  if(previous?.assetRevision!==revision||!await fs.stat(optimized).catch(()=>null)||!await fs.stat(collision).catch(()=>null)){
-    await doc.transform(textureCompress({encoder:sharp,targetFormat:'jpeg',resize:[2048,2048],quality:90}));
-    await io.write(optimized,doc);
+  let displayOptimization=previous?.sourceInfo?.displayOptimization;
+  if(previous?.assetRevision!==revision||previous?.optimizedMeshUrl||displayOptimization?.profile!==DISPLAY_PROFILE||!await fs.stat(optimized).catch(()=>null)){
+    const report=await optimizeDisplayGLB(meshPath,optimized);
+    displayOptimization={profile:DISPLAY_PROFILE,bytes:report.outputBytes,textureMaxSize:3072,geometryPreserved:true};
+  }
+  if(previous?.assetRevision!==revision||!await fs.stat(collision).catch(()=>null)){
     await MeshoptSimplifier.ready;
     for(const mesh of doc.getRoot().listMeshes())for(const p of mesh.listPrimitives()){p.setMaterial(null); for(const s of p.listSemantics())if(s!=='POSITION')p.setAttribute(s,null);}
     await doc.transform(weld(),simplify({simplifier:MeshoptSimplifier,ratio:.12,error:.015}),prune());
@@ -55,7 +56,7 @@ export async function importSession(sourceDirectory:string, meshPath:string, for
   const target=hasPose?first.slice(0,3).map((r,i)=>pos[i]-r[2]*3) as Vec3:[center[0],pos[1],center[2]-3] as Vec3;
   const scene:LocalScene={id,title:previous?.title||manifest.title||`새 현장 · ${manifest.session_id.slice(0,8)}`,sessionId:manifest.session_id,assetRevision:revision,createdAt:new Date().toISOString(),sourceDirectory:base,files,duration,
     videoUrl:`/api/scenes/${id}/assets/video`,meshUrl:`/api/scenes/${id}/assets/mesh`,originalMeshUrl:`/api/scenes/${id}/assets/original`,collisionUrl:`/api/scenes/${id}/assets/collision`,frames,cameraPath:camPath,bounds,spawn:{position:pos,target},
-    sourceInfo:{vertices:positions.reduce((s:number,a:any)=>s+a.count,0),triangles:j.meshes.reduce((s:number,m:any)=>s+m.primitives.reduce((n:number,p:any)=>n+j.accessors[p.indices??p.attributes.POSITION].count/3,0),0),textures:j.textures?.length||0,droppedFrames:manifest.summary?.video_dropped||0,alignment:hasPose?'카메라 좌표 제공 · 영상/공간 대조 필요':'촬영 자세 미제공 · 수동 연결'},
+    sourceInfo:{displayOptimization,vertices:positions.reduce((s:number,a:any)=>s+a.count,0),triangles:j.meshes.reduce((s:number,m:any)=>s+m.primitives.reduce((n:number,p:any)=>n+j.accessors[p.indices??p.attributes.POSITION].count/3,0),0),textures:j.textures?.length||0,droppedFrames:manifest.summary?.video_dropped||0,alignment:hasPose?'카메라 좌표 제공 · 영상/공간 대조 필요':'촬영 자세 미제공 · 수동 연결'},
     hazards:[],runs:[],manualRevision:0,navigationRevision:1,corrections:[]};
   await fs.writeFile(path.join(dir,'scene.json'),JSON.stringify(scene,null,2));
   console.log(JSON.stringify({id,frames:frames.length,duration,renderMiB:Math.round((await fs.stat(optimized)).size/1048576),collisionMiB:Math.round((await fs.stat(collision)).size/1048576),bounds}));

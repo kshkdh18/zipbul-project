@@ -1,7 +1,9 @@
 'use client';
+import {t, useLocale} from './Locale';
 import {useEffect,useRef,useState,type ReactNode,type PointerEvent} from 'react';
 
 export default function ResizablePanel({side,className,children}:{side:'left'|'right';className:string;children:ReactNode}){
+  const {locale}=useLocale();
   const panel=useRef<HTMLElement>(null);
   const drag=useRef<{x:number;width:number}|null>(null);
   const [width,setWidth]=useState<number>();
@@ -39,9 +41,9 @@ export default function ResizablePanel({side,className,children}:{side:'left'|'r
     setResizing(true);document.body.classList.add('panel-resizing');
   }
   const handle=<div className={`panel-resizer ${resizing?'is-resizing':''}`} role="separator" tabIndex={0}
-    aria-label={side==='left'?'좌측 패널 너비 조절':'우측 패널 너비 조절'} aria-orientation="vertical"
+    aria-label={side==='left'?t("좌측 패널 너비 조절"):t("우측 패널 너비 조절")} aria-orientation="vertical"
     aria-controls={`panel-${side}`} aria-valuemin={minimum} aria-valuemax={maximum} aria-valuenow={width??(side==='left'?235:340)}
-    title="드래그하여 너비 조절 · 더블 클릭으로 초기화" onPointerDown={start}
+    title={t("드래그하여 너비 조절 · 더블 클릭으로 초기화")} onPointerDown={start}
     onPointerMove={e=>{if(drag.current)resize(drag.current.width+(e.clientX-drag.current.x)*(side==='left'?1:-1));}}
     onPointerUp={e=>{if(!drag.current)return;save();finish();e.currentTarget.releasePointerCapture(e.pointerId);}}
     onPointerCancel={finish} onLostPointerCapture={finish}

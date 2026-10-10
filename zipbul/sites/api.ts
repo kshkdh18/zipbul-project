@@ -29,7 +29,7 @@ export function snapshot(record:StoredScene):SceneData {
   return {...s,hazards:[...byId.values()],manualRevision:m.revision,corrections:m.corrections,navigationRevision,navigationChecks:(s.navigationChecks||[]).map(r=>{const stale=r.assetRevision!==s.assetRevision||r.navigationRevision!==navigationRevision;return {...r,stale,valid:!stale&&r.valid};})};
 }
 function revision(r:StoredScene,p:{manualRevision:number}){if(p.manualRevision!==r.manual.revision)throw new ApiError(409,'검토 기록이 변경됐습니다. 다시 확인해 주세요.');}
-const keySchema=z.string().regex(/^scene-[\w-]+\/(video|mesh|collision|original|frame-\d+)$/);
+const keySchema=z.string().regex(/^scene-[\w-]+\/(video|mesh|meshOptimized|collision|original|frame-\d+)$/);
 async function upload(request:Request,env:SiteEnv,action:string){
   if(![env.ZIPBUL_UPLOAD_TOKEN,env.ZIPBUL_SYNC_TOKEN].filter(Boolean).includes(request.headers.get('X-Zipbul-Upload')||''))throw new ApiError(403,'자료 전송 권한이 없습니다.');
   const url=new URL(request.url);
@@ -54,7 +54,7 @@ async function upload(request:Request,env:SiteEnv,action:string){
   if(action==='seed'||action==='sync'){
     const record=body as StoredScene;const id=z.string().regex(/^scene-[\w-]+$/).parse(record.scene?.id);
     if(!record.manual||!Array.isArray(record.surfaces)||!Array.isArray(record.scene.frames))throw new ApiError(400,'현장 자료 형식이 잘못됐습니다.');
-    for(const asset of ['mesh','video','collision','original',...record.scene.frames.map(f=>f.id)])if(!await env.BUCKET.head(keySchema.parse(`${id}/${asset}`)))throw new ApiError(400,`자료 전송이 완료되지 않았습니다: ${asset}`);
+    for(const asset of ['mesh','video','collision','original',...(record.scene.optimizedMeshUrl?['meshOptimized']:[]),...record.scene.frames.map(f=>f.id)])if(!await env.BUCKET.head(keySchema.parse(`${id}/${asset}`)))throw new ApiError(400,`자료 전송이 완료되지 않았습니다: ${asset}`);
     const existing=await env.DB.prepare('SELECT id FROM scenes WHERE id=?').bind(id).first();if(existing){
       if(action!=='sync')throw new ApiError(409,'이미 등록된 현장은 덮어쓰지 않습니다.');
       const current=await load(env,id);

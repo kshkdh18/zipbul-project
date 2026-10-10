@@ -1,0 +1,17 @@
+export const GUIDE_STORAGE_KEY = 'zipbul-guide-v1';
+export const guideSteps = [
+  {id:'site', target:'.space-picker', en:['Choose a site','Switch between the captured sites here. Each site has its own 3D space, video, observations, and review records.'], ko:['현장 선택','수집한 현장을 선택하세요. 현장마다 3D 공간, 원본 영상, 관찰 결과와 검토 기록이 따로 보관됩니다.']},
+  {id:'import', target:'[data-tour="import"]', en:['Bring your own capture','Choose Import site and select a GLB plus the original video of the same space. Camera metadata is optional. Close the import window to continue the guide.'], ko:['새 현장 가져오기','현장 추가에서 같은 공간의 GLB와 원본 영상을 선택합니다. 카메라 메타데이터는 선택 사항입니다. 가져오기 창을 닫으면 가이드를 이어갈 수 있습니다.']},
+  {id:'analysis', target:'[data-tour="analyze"]', en:['Find observations with Astra','New analysis lets you choose the current frame or samples across the video. Analysis history keeps past runs. Opening the options does not start analysis.'], ko:['Astra로 관찰 후보 찾기','새 위험 분석에서 현재 프레임 또는 전체 영상 표본을 고릅니다. 이전 실행은 분석 이력에서 확인합니다. 옵션 창을 여는 것만으로 분석이 시작되지는 않습니다.']},
+  {id:'items', target:'.hazard-list', en:['Select an inspection item','Click an item to see its observed condition and linked evidence. The 3D view moves to a confirmed location or the recorded camera viewpoint.'], ko:['점검 항목 선택','항목을 누르면 관찰 내용과 연결된 근거를 볼 수 있습니다. 3D 화면은 확인된 위치 또는 기록된 촬영 시점으로 이동합니다.']},
+  {id:'evidence', target:'.evidence-media', en:['Check the original evidence','The highlighted image region shows what was observed. Play the original video to inspect the surrounding context, and use Capture viewpoint to compare the space.'], ko:['원본 근거 확인','표시된 영상 영역에서 실제 관찰 내용을 확인합니다. 원본 영상 재생으로 앞뒤 상황을 살펴보고, 촬영 시점으로 공간과 대조하세요.']},
+  {id:'location', target:'.location-state', en:['Confirm where it is','A location candidate is not yet confirmed. Choose Link location, click the matching original GLB surface, and save only after checking the correspondence.'], ko:['공간 위치 확인','위치 후보는 아직 확정된 위치가 아닙니다. 수동 위치 연결을 누르고 대응하는 원본 GLB 표면을 선택한 뒤 확인하여 저장하세요.']},
+  {id:'review', target:'.review-section', en:['Record your review','Mark the item Reviewed, Needs information, or Dismissed after examining the evidence. Guide checkmarks only track this tutorial; they do not change inspection records.'], ko:['검토 상태 기록','근거를 살펴본 뒤 확인·보류·오탐을 기록합니다. 가이드의 체크는 사용법 확인 상태만 저장하며 실제 점검 기록을 바꾸지 않습니다.']},
+  {id:'graph', target:'.graph-view', en:['Follow the evidence links','Explore how an observation connects to a potential hazard and suggested checks. Select a node, switch between 3D and 2D, or focus on one item.'], ko:['근거의 연결 탐색','관찰 근거, 위험 해석, 점검 제안의 관계를 살펴보세요. 노드를 선택하거나 3D·2D 전환, 집중 보기를 사용할 수 있습니다.']},
+  {id:'walk', target:'.stage', en:['Explore and compare','Choose Start exploring. Use WASD to move, the mouse to look, and Esc to pause. Show original compares the captured mesh with the reconstructed scene from the same viewpoint.'], ko:['직접 탐사하고 원본과 비교','탐사 시작 후 WASD로 이동하고 마우스로 시점을 바꿉니다. Esc로 멈출 수 있습니다. 원본 비교를 누르면 같은 시점에서 수집 메시와 재구성 장면을 대조합니다.']},
+] as const;
+export type GuideStepId = typeof guideSteps[number]['id'];
+export function readGuideState(raw: string | null): {checked: string[]; dismissed: boolean} {
+  try { const state=JSON.parse(raw||'{}'); return {checked:Array.isArray(state.checked)?[...new Set<string>(state.checked.filter((id:unknown)=>guideSteps.some(s=>s.id===id)))]:[],dismissed:state.dismissed===true}; }
+  catch { return {checked:[],dismissed:false}; }
+}

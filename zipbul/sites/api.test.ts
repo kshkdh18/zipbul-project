@@ -100,3 +100,30 @@ test('cloud import copies bounded source assets into R2 and then serves independ
     assert.equal(result.status,'completed');const before=workerCalls;assert.equal((await req('scenes/'+data.id)).status,200);assert.equal(workerCalls,before);assert.equal(objects.has(data.id+'/video'),true);
   }finally{globalThis.fetch=original;sql.close();}
 });
+
+test('selected language reaches analysis and chat; new runs default to English',async()=>{
+  const original=globalThis.fetch;
+  try{for(const language of ['en','ko'] as const){
+    const {sql,env,seed,request}=fixture();const calls:any[]=[];
+    globalThis.fetch=async(_url:any,init:any)=>{const body=JSON.parse(init.body);calls.push(body);return Response.json(body.background?{id:'resp-language',status:'queued'}:{output_text:'answer'});};
+    try{
+      const response=await request('/analyses','POST',{frameIds:['frame-0'],...(language==='ko'?{language}:{})});assert.equal(response.status,202);
+      assert.equal((await response.json() as any).language,language);await advance(env,seed.scene.id);
+      assert.match(calls[0].input[0].content[0].text,language==='en'?/설명은 영어/:/설명은 한국어/);
+      await request('/chat','POST',{question:'What is visible?',hazardId:null,language});assert.match(calls[1].instructions,language==='en'?/Respond in English/:/Respond in Korean/);
+    }finally{sql.close();}
+  }}finally{globalThis.fetch=original;}
+});
+
+test('optimized assets are served and a scene cannot advertise a missing optimized mesh',async()=>{
+  const {sql,env,seed,request}=fixture();
+  try{
+    env.BUCKET.head=async key=>key.endsWith('/meshOptimized')?{size:3,httpEtag:'"mesh"',httpMetadata:{contentType:'model/gltf-binary'}} as any:null;
+    env.BUCKET.get=async()=>({body:new Response(new Uint8Array([1,2,3])).body} as any);
+    const r=await request('/assets/meshOptimized');assert.equal(r.status,200);assert.equal(r.headers.get('content-type'),'model/gltf-binary');assert.deepEqual([...new Uint8Array(await r.arrayBuffer())],[1,2,3]);
+    env.ZIPBUL_SYNC_TOKEN='sync-test';env.BUCKET.head=async key=>key.endsWith('/meshOptimized')?null:{size:1} as any;
+    seed.scene.optimizedMeshUrl=`/api/scenes/${seed.scene.id}/assets/meshOptimized`;
+    const missing=await handleApi(new Request('https://zipbul.test/api/transfer/sync',{method:'POST',headers:{'X-Zipbul-Upload':'sync-test','Content-Type':'application/json'},body:JSON.stringify(seed)}),env);
+    assert.equal(missing.status,400);assert.match(await missing.text(),/meshOptimized/);
+  }finally{sql.close();}
+});

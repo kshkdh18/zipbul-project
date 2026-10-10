@@ -25,6 +25,7 @@ export interface Enhancement {
 export interface Run {
   id: string; status: 'queued'|'running'|'completed'|'partial'|'failed'|'canceled';
   phase: string; model: string; frameIds: string[]; completedFrameIds: string[];
+  language?: 'en'|'ko';
   providerIds: string[]; startedAt: string; finishedAt?: string; error?: string;
   usage?: {input_tokens: number; output_tokens: number}; resultCount: number;
 }
@@ -34,9 +35,9 @@ export interface PathCheck {points:Vec3[];segments:NavigationSegment[];correctio
 export interface RouteRecord extends PathCheck {id:string;checkedAt:string;stale:boolean;validation:'browser_rapier'}
 export interface SceneData {
   id: string; title: string; sessionId: string; assetRevision: string;
-  duration: number; videoUrl: string; meshUrl: string; originalMeshUrl: string; collisionUrl: string;
+  duration: number; optimizedMeshUrl?:string; videoUrl: string; meshUrl: string; originalMeshUrl: string; collisionUrl: string;
   frames: Frame[]; cameraPath: Vec3[]; bounds: {min:Vec3;max:Vec3};
-  spawn: {position:Vec3;target:Vec3}; sourceInfo: {vertices:number;triangles:number;textures:number;droppedFrames:number;alignment:string};
+  spawn: {position:Vec3;target:Vec3}; sourceInfo: {vertices:number;triangles:number;textures:number;droppedFrames:number;alignment:string;displayOptimization?:{profile:string;bytes:number;previousBytes?:number;textureMaxSize:number;geometryPreserved:boolean}};
   hazards: Hazard[]; runs: Run[]; manualRevision: number; navigationRevision:number; corrections:Correction[]; enhancements?:Enhancement[];reconstruction?:{version:number;assetCount:number;sourceFrameIds:string[]};navigationChecks?:RouteRecord[];
 }
 export interface LocalScene extends SceneData {

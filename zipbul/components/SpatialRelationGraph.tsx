@@ -1,4 +1,5 @@
 'use client';
+import {t, useLocale} from './Locale';
 import {useEffect,useRef,useState} from 'react';
 import {ArrowUpRight,Expand,Pause,Play,ZoomIn,ZoomOut} from 'lucide-react';
 import * as THREE from 'three';
@@ -8,9 +9,11 @@ import type {Node,Edge} from '@xyflow/react';
 
 type Props={nodes:Node[];edges:Edge[];selected:string|null;onSelect:(id:string,evidenceId?:string)=>void};
 type Handle={zoom:(factor:number)=>void;reset:()=>void;rotate:(enabled:boolean)=>void;highlight:(id:string|null)=>void};
-const kindNames:Record<string,string>={scene:'현장',hazard:'위험 해석',evidence:'영상 근거',entity:'공간 대상',action:'현장 점검'};
 
 export default function SpatialRelationGraph(props:Props){
+  const {locale}=useLocale();
+  const kindNames:Record<string,string>={scene:t("현장"),hazard:t("위험 해석"),evidence:t("영상 근거"),entity:t("공간 대상"),action:t("현장 점검")};
+
   const host=useRef<HTMLDivElement>(null),runtime=useRef<Handle|null>(null),latest=useRef(props);latest.current=props;
   const [rotating,setRotating]=useState(true),[error,setError]=useState(''),[hovered,setHovered]=useState<string|null>(null);
   const topology=JSON.stringify([props.nodes.map(n=>[n.id,n.data]),props.edges.map(e=>[e.id,e.source,e.target,e.label])]);
@@ -22,9 +25,9 @@ export default function SpatialRelationGraph(props:Props){
     const element=host.current;if(!element)return;
     const {nodes,edges}=latest.current;
     let renderer:THREE.WebGLRenderer;
-    try{renderer=new THREE.WebGLRenderer({antialias:true});}catch{setError('3D 그래프를 준비하지 못했습니다. 2D 정렬 보기로 전환해 주세요.');return;}
+    try{renderer=new THREE.WebGLRenderer({antialias:true});}catch{setError(t("3D 그래프를 준비하지 못했습니다. 2D 정렬 보기로 전환해 주세요."));return;}
     renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setClearColor(0x14191e);element.appendChild(renderer.domElement);
-    renderer.domElement.setAttribute('aria-label','회전하고 확대할 수 있는 위험 관계 네트워크');
+    renderer.domElement.setAttribute('aria-label',t("회전하고 확대할 수 있는 위험 관계 네트워크"));
     const labels=new CSS2DRenderer();labels.domElement.className='spatial-graph-labels';element.appendChild(labels.domElement);
     const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(42,1,.1,250);
     const controls=new OrbitControls(camera,element);controls.enableDamping=true;controls.dampingFactor=.075;controls.minDistance=10;controls.maxDistance=110;controls.autoRotateSpeed=.17;
@@ -67,8 +70,8 @@ export default function SpatialRelationGraph(props:Props){
       mesh.position.copy(positions.get(node.id)||new THREE.Vector3());network.add(mesh);meshes.set(node.id,mesh);
       const button=document.createElement('button');button.type='button';button.className=`network-node ${kind}`;button.dataset.nodeId=node.id;button.dataset.hazardId=String(node.data.hazardId||'');button.title=String(node.data.label);button.setAttribute('aria-label',`${kindNames[kind]}: ${node.data.label}`);
       const disc=document.createElement('span');disc.className='network-disc';
-      const glyph=document.createElement('span');glyph.className='network-glyph';glyph.textContent=kind==='hazard'?`H-${String(index+1).padStart(2,'0')}`:kind==='scene'?(String(node.data.label).match(/현장\s*(\d+)/)?.[1]||'공간'):kind==='evidence'?String(node.data.label).split('·').at(-1)!.trim():kind==='action'?'점검':'대상';
-      const label=document.createElement('span');label.className='network-node-title';label.textContent=kind==='scene'?'현장 연결망':kind==='hazard'?String(node.data.label):kind==='evidence'?'영상 근거':kind==='entity'?(String(node.data.label).includes('연결됨')?'위치 연결됨':'위치 검토 필요'):'점검 제안';
+      const glyph=document.createElement('span');glyph.className='network-glyph';glyph.textContent=kind==='hazard'?`H-${String(index+1).padStart(2,'0')}`:kind==='scene'?(String(node.data.label).match(/(?:현장|Site)\s*(\d+)/)?.[1]||t("공간")):kind==='evidence'?String(node.data.label).split('·').at(-1)!.trim():kind==='action'?t("점검"):t("대상");
+      const label=document.createElement('span');label.className='network-node-title';label.textContent=kind==='scene'?t("현장 연결망"):kind==='hazard'?String(node.data.label):kind==='evidence'?t("영상 근거"):kind==='entity'?(String(node.data.label).includes(t("연결됨"))?t("위치 연결됨"):t("위치 검토 필요")):t("점검 제안");
       disc.append(glyph);button.append(disc,label);
       button.addEventListener('pointerdown',e=>e.stopPropagation());button.addEventListener('click',e=>{e.stopPropagation();choose(node);});
       button.addEventListener('pointerenter',()=>{hovering=true;controls.autoRotate=false;setHovered(node.id);highlight(node.data.kind==='scene'?null:String(node.data.hazardId));});
@@ -113,11 +116,11 @@ export default function SpatialRelationGraph(props:Props){
   },[topology]);
   return <div className="graph-body spatial-graph network-graph">
     <div ref={host} className="spatial-graph-canvas"/>
-    <div className="network-overview"><span className="network-eyebrow">RELATION EXPLORER</span><h3>위험의 연결을<br/>한눈에.</h3><p>현장에서 발견한 대상과<br/>영상 근거, 점검의 관계를 탐색하세요.</p><div className="network-counts"><div><strong>{String(hazards.length).padStart(2,'0')}</strong><span>점검 항목</span></div><div><strong>{String(evidenceCount).padStart(2,'0')}</strong><span>영상 근거</span></div></div><div className="network-legend"><span><i className="risk"/>위험 해석</span><span><i className="evidence"/>영상 근거</span><span><i/>대상 · 점검</span></div></div>
-    {inspected&&<div className="network-inspector"><div><span>{kindNames[String(inspected.data.kind)]}</span><small>{props.edges.filter(e=>e.source===inspected.id||e.target===inspected.id).length}개 직접 연결</small></div><h4>{String(inspected.data.label)}</h4><p>{inspected.data.kind==='hazard'?'관찰 근거와 점검 제안이 연결된 항목입니다.':inspected.data.kind==='scene'?'입력된 현장에 속한 대상들을 연결합니다.':'선택하면 해당 점검 항목과 원본 영상 근거로 연결됩니다.'}</p>{inspected.data.hazardId!=null&&<button onClick={()=>props.onSelect(String(inspected.data.hazardId),inspected.data.kind==='evidence'?inspected.id:undefined)}>점검 선택<ArrowUpRight size={13}/></button>}</div>}
-    <div className="spatial-graph-toolbar"><button aria-label="그래프 확대" title="확대" onClick={()=>runtime.current?.zoom(.82)}><ZoomIn size={16}/></button><button aria-label="그래프 축소" title="축소" onClick={()=>runtime.current?.zoom(1.22)}><ZoomOut size={16}/></button><button title="전체 관계 맞추기" onClick={()=>runtime.current?.reset()}><Expand size={16}/></button><span className="network-toolbar-divider"/><button className={rotating?'active':''} onClick={()=>{runtime.current?.rotate(!rotating);setRotating(!rotating);}}>{rotating?<Pause size={13}/>:<Play size={13}/>}자동 회전</button></div>
-    <div className="network-meta"><span>{props.nodes.length} NODES / {props.edges.length} LINKS</span><small>의미 관계 · 실제 현장 좌표와 무관</small></div>
-    <div className="spatial-graph-guide">드래그 회전 · 휠 확대 · 우클릭 드래그 이동</div>
+    <div className="network-overview"><span className="network-eyebrow">RELATION EXPLORER</span><h3>{""}{t("위험의 연결을")}{""}<br/>{""}{t("한눈에.")}{""}</h3><p>{""}{t("현장에서 발견한 대상과")}{""}<br/>{""}{t("영상 근거, 점검의 관계를 탐색하세요.")}{""}</p><div className="network-counts"><div><strong>{String(hazards.length).padStart(2,'0')}</strong><span>{""}{t("점검 항목")}{""}</span></div><div><strong>{String(evidenceCount).padStart(2,'0')}</strong><span>{""}{t("영상 근거")}{""}</span></div></div><div className="network-legend"><span><i className="risk"/>{""}{t("위험 해석")}{""}</span><span><i className="evidence"/>{""}{t("영상 근거")}{""}</span><span><i/>{""}{t("대상 · 점검")}{""}</span></div></div>
+    {inspected&&<div className="network-inspector"><div><span>{kindNames[String(inspected.data.kind)]}</span><small>{t("{0}개 직접 연결",props.edges.filter(e=>e.source===inspected.id||e.target===inspected.id).length)}</small></div><h4>{String(inspected.data.label)}</h4><p>{inspected.data.kind==='hazard'?t("관찰 근거와 점검 제안이 연결된 항목입니다."):inspected.data.kind==='scene'?t("입력된 현장에 속한 대상들을 연결합니다."):t("선택하면 해당 점검 항목과 원본 영상 근거로 연결됩니다.")}</p>{inspected.data.hazardId!=null&&<button onClick={()=>props.onSelect(String(inspected.data.hazardId),inspected.data.kind==='evidence'?inspected.id:undefined)}>{""}{t("점검 선택")}{""}<ArrowUpRight size={13}/></button>}</div>}
+    <div className="spatial-graph-toolbar"><button aria-label={t("그래프 확대")} title={t("확대")} onClick={()=>runtime.current?.zoom(.82)}><ZoomIn size={16}/></button><button aria-label={t("그래프 축소")} title={t("축소")} onClick={()=>runtime.current?.zoom(1.22)}><ZoomOut size={16}/></button><button title={t("전체 관계 맞추기")} onClick={()=>runtime.current?.reset()}><Expand size={16}/></button><span className="network-toolbar-divider"/><button className={rotating?'active':''} onClick={()=>{runtime.current?.rotate(!rotating);setRotating(!rotating);}}>{rotating?<Pause size={13}/>:<Play size={13}/>}{""}{t("자동 회전")}{""}</button></div>
+    <div className="network-meta"><span>{props.nodes.length} NODES / {props.edges.length} LINKS</span><small>{""}{t("의미 관계 · 실제 현장 좌표와 무관")}{""}</small></div>
+    <div className="spatial-graph-guide">{""}{t("드래그 회전 · 휠 확대 · 우클릭 드래그 이동")}{""}</div>
     {error&&<div className="graph-empty spatial-graph-error">{error}</div>}
   </div>;
 }
