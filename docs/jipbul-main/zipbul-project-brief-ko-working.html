@@ -125,15 +125,18 @@ figcaption {font-size:7pt;line-height:1.4;color:var(--muted);margin-top:2.5mm;}
 @media print {body {background:none;} .print-tools {display:none;} .page {margin:0;} }
 
 .problem-copy {flex:1;}
-.problem-copy p {font-size:9pt;line-height:1.4;}
-.sources {font-size:6.5pt;color:var(--muted);margin-top:1.5mm;}
-.sources a {text-decoration:underline;}
-.vision-work {top:235mm;border-top:.35mm solid var(--ink);padding-top:3mm;color:var(--ink);}
-.vision-work h2 {font-size:12pt;margin:2mm 0;}
-.vision-work p {font-size:8.2pt;line-height:1.45;}
-.vision-work p+p {margin-top:2mm;}
-.vision-work .eyebrow {font-size:7pt;}
-.vision-work .scope {font-size:6.8pt;color:var(--muted);}
+.problem-copy .evidence-add {font-size:7.5pt;color:var(--muted);margin-top:2mm;line-height:1.4;}
+.evidence-add a {text-decoration:underline;white-space:nowrap;}
+.system {top:127mm;}
+.screenshot {top:173mm;}
+.screenshot img {height:86mm;}
+.results {top:190mm;}
+.next {top:225mm;}
+.vision-work {top:239mm;border-top:.35mm solid var(--ink);padding-top:2.5mm;}
+.vision-work h2 {font-size:11.5pt;margin:1.5mm 0;}
+.vision-work p {font-size:7.7pt;line-height:1.4;}
+.vision-work p+p {margin-top:1.5mm;}
+.vision-work .eyebrow {font-size:6.8pt;}
 </style>
 </head>
 <body>
@@ -161,7 +164,7 @@ figcaption {font-size:7pt;line-height:1.4;color:var(--muted);margin-top:2.5mm;}
   </section>
   <div class="place problem">
     <div class="left-label"><span>해결하려는 문제</span>어디를 더 자세히<br>살펴봐야 할까.</div>
-    <div class="problem-copy"><p>2024년 미국에서 <b>5,070명이 업무 관련 부상으로 사망</b>했습니다. 안전관리자와 재난 대응 인력은 진입 전 위험을 파악해야 합니다. 짚불은 <b>무엇이 어디에서 관찰됐고, 왜 중요한지</b> 3D 공간과 영상 근거로 연결합니다.</p><div class="sources"><a href="https://www.bls.gov/news.release/cfoi.nr0.htm?rel=0">BLS · 2026 발표 / 2024 통계</a> · <a href="https://www.nist.gov/blogs/taking-measure/drones-disaster-zones-how-advanced-3d-mapping-technology-can-help-first">NIST · 진입 전 공간 파악, 2025</a></div></div>
+    <div class="problem-copy"><p>안전관리자와 재난 대응 인력은 점검할 곳이나 진입할 구역을 정하기 전에 위험요소를 파악해야 합니다. 짚불은 탐사 가능한 3D 공간에서 <b>무엇이 관찰됐는지, 어디에 있는지, 왜 중요한지</b> 함께 확인하도록 돕습니다.</p><p class="evidence-add">NIST는 재난 현장에서 드론의 영상·실내 매핑이 사람과 잠재적 위험의 위치를 파악하고 대응을 도울 수 있다고 설명합니다. <a href="https://www.nist.gov/blogs/taking-measure/drones-disaster-zones-how-advanced-3d-mapping-technology-can-help-first">NIST, 2025 ↗</a></p></div>
   </div>
   <section class="place system">
     <div class="section-line"><p class="eyebrow">세 가지 모듈, 하나의 현장 탐사 목표</p><span class="secondary">제어 / 수집 / 검토</span></div>
@@ -213,7 +216,9 @@ figcaption {font-size:7pt;line-height:1.4;color:var(--muted);margin-top:2.5mm;}
       <article class="result"><div class="result-title"><span>03</span> / 근거를 확인할 수 있는 결과</div><p>원본 영상 열기, 수동 위치 연결 저장, 관계 그래프, 워크스루 이동·충돌 처리를 확인했습니다. 점검 후보의 최종 판단은 사람이 검토합니다.</p></article>
     </div>
   </section>
-  <section class="place next vision-work"><p class="eyebrow">Vision / 현장 검토에서 탐사 자동화로</p><h2>기존 장비로 시작해, 현장에서 가치를 검증합니다.</h2><p>안전관리자·점검업체와 영상 판독, 위험 위치 기록, 재점검의 병목을 확인합니다. ZipScan·ZipBul의 현장 검토 흐름을 먼저 평가하고, ZipControl의 수집 데이터를 연결해 사람이 감독하는 원격 탐사로 확장합니다.</p><p><b>비용 전략:</b> 전용 드론 SDK 대신 기존 조종 앱을 활용하는 방식의 연동 부담과 API 비용·지연·개입 횟수를 측정합니다. 공간 모델링 비용은 별도로 평가하고, 같은 작업 범위에서 성공한 탐사 1회당 총비용을 비교합니다.</p><p class="scope">수요조사·비용 절감률은 향후 검증 항목입니다. 재구성 형상은 추정이며 실제 현장의 안전을 인증하지 않습니다.</p></section>
+  <p class="place next"><b>다음 단계:</b> 로봇 수집과 검토 과정을 연결하고, 더 다양한 현장 데이터에서 위험 탐지·위치 추정 성능을 측정합니다. 워크스루의 재구성 형상은 추정이며, 실제 현장의 안전을 인증하지 않습니다.</p>
+
+  <section class="place vision-work"><p class="eyebrow">Vision / 현장 검토에서 탐사 자동화로</p><h2>기존 장비로 시작해, 현장에서 가치를 검증합니다.</h2><p>안전관리자·점검업체와 판독·위치 기록·재점검의 병목을 확인하고, ZipScan·ZipBul의 현장 가치를 평가합니다. 이후 ZipControl의 수집 데이터를 연결해 사람이 감독하는 원격 탐사로 확장합니다.</p><p><b>비용 전략:</b> SDK 없는 제어의 연동 부담, API 비용·지연·개입 횟수를 측정합니다. 모델링 비용은 별도로 평가하고, 같은 작업 범위에서 성공한 탐사 1회당 총비용을 비교합니다. 수요·절감률은 향후 검증 항목입니다.</p></section>
   <footer class="place footer"><span><strong>ZIPBUL</strong> / Community Hackathon Seoul 2026</span><span>기술과 구현 결과 / 02</span></footer>
 </section>
 <section class="page page-three" aria-label="Page 3: 제품 화면hots appendix">
