@@ -18,7 +18,4 @@ fs.writeFileSync(path.join(target,'build/sites-worker.ts'),worker);
 let ui=fs.readFileSync(path.join(target,'components/Workspace.tsx'),'utf8').replace('ZIPBUL / LOCAL','ZIPBUL / SITES');
 fs.writeFileSync(path.join(target,'components/Workspace.tsx'),ui);
 const graph=path.join(target,'components/SpatialRelationGraph.tsx');if(fs.existsSync(graph))fs.writeFileSync(graph,fs.readFileSync(graph,'utf8').replace('element.dataset.azimuth','element!.dataset.azimuth'));
-let importUI=fs.readFileSync(path.join(source,'components/ImportScene.tsx'),'utf8');
-importUI=importUI.replace('준비 완료 후 ‘새 위험 분석’에서 Astra 분석을 시작하세요.','새 파일 준비에는 연결된 처리 서버가 필요합니다. 준비 완료 후 ‘새 위험 분석’에서 Astra 분석을 시작하세요.');
-fs.writeFileSync(path.join(target,'components/ImportScene.tsx'),importUI);
 console.log(JSON.stringify({checkout:target,synced:true}));
