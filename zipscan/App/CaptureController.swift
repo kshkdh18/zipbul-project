@@ -7,8 +7,8 @@ final class CaptureController: NSObject, ObservableObject, ARSessionDelegate, @u
     enum Phase { case preparing, scanning, saving, finished }
     @Published var phase: Phase = .preparing
     @Published var elapsed: Double = 0
-    @Published var tracking = "주변을 천천히 비춰 주세요"
-    @Published var depthState = "깊이 센서 준비 중"
+    @Published var tracking = "Move slowly to scan your surroundings"
+    @Published var depthState = "Starting depth sensor"
     @Published var summary = CaptureSummary()
     @Published var thermalWarning: String?
     @Published var result: SessionManifest?
@@ -44,7 +44,7 @@ final class CaptureController: NSObject, ObservableObject, ARSessionDelegate, @u
     }
 
     @MainActor func start(directoryRoot: URL, settings requested: CaptureSettings = .init()) throws {
-        guard ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh), ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) else { throw ScanError.invalid("LiDAR를 지원하는 iPhone이 필요합니다.") }
+        guard ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh), ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) else { throw ScanError.invalid("A LiDAR-enabled iPhone is required.") }
         let configuration = ARWorldTrackingConfiguration()
         configuration.sceneReconstruction = .mesh; configuration.frameSemantics = [.sceneDepth]
         configuration.worldAlignment = .gravity
@@ -53,7 +53,7 @@ final class CaptureController: NSObject, ObservableObject, ARSessionDelegate, @u
             let a = abs($0.imageResolution.width * $0.imageResolution.height - 1920 * 1440)
             let b = abs($1.imageResolution.width * $1.imageResolution.height - 1920 * 1440)
             return a == b ? $0.framesPerSecond < $1.framesPerSecond : a < b
-        }) else { throw ScanError.invalid("사용할 수 있는 카메라 포맷이 없습니다.") }
+        }) else { throw ScanError.invalid("No supported camera format is available.") }
         configuration.videoFormat = format
         settings = requested; settings.imageWidth = Int(format.imageResolution.width); settings.imageHeight = Int(format.imageResolution.height); settings.arFps = format.framesPerSecond
         videoSampler = RateSampler(hz: settings.videoFps); depthSampler = RateSampler(hz: settings.depthHz)
@@ -119,8 +119,8 @@ final class CaptureController: NSObject, ObservableObject, ARSessionDelegate, @u
     private func thermalChanged() {
         let state = ProcessInfo.processInfo.thermalState
         recorder?.event(CaptureEvent("thermal", message: "\(state.rawValue)"))
-        if state == .serious { thermalWarning = "기기가 뜨겁습니다. 잠시 후 촬영을 마쳐 주세요." }
-        else if state == .critical { thermalWarning = "발열로 수집을 종료합니다."; requestStop("thermal_critical") }
+        if state == .serious { thermalWarning = "Your iPhone is getting hot. Finish your scan soon." }
+        else if state == .critical { thermalWarning = "Stopping the scan because your iPhone is overheating."; requestStop("thermal_critical") }
         else { thermalWarning = nil }
     }
 
@@ -136,8 +136,8 @@ final class CaptureController: NSObject, ObservableObject, ARSessionDelegate, @u
             lastHUD = frame.timestamp
             let ready = frame.sceneDepth?.confidenceMap != nil
             DispatchQueue.main.async {
-                self.tracking = state.0 == "normal" ? "추적 정상" : "천천히 이동하세요"
-                self.depthState = ready ? "깊이 수집 중" : "일부 공간 데이터가 저장되지 않았습니다"
+                self.tracking = state.0 == "normal" ? "Tracking stable" : "Move slowly"
+                self.depthState = ready ? "Depth active" : "Some depth data could not be saved"
             }
         }
         if origin == nil {
@@ -178,7 +178,7 @@ final class CaptureController: NSObject, ObservableObject, ARSessionDelegate, @u
         for anchor in anchors.compactMap({ $0 as? ARMeshAnchor }) {
             let source = anchor.geometry.vertices, faces = anchor.geometry.faces
             guard source.format == .float3, faces.indexCountPerPrimitive == 3, [2, 4].contains(faces.bytesPerIndex) else {
-                recorder?.event(CaptureEvent("mesh_error", message: "지원하지 않는 메쉬 버퍼 포맷")); requestStop("mesh_error"); return
+                recorder?.event(CaptureEvent("mesh_error", message: "Unsupported mesh buffer format")); requestStop("mesh_error"); return
             }
             let base = source.buffer.contents().advanced(by: source.offset)
             let vertices: [SIMD3<Float>] = (0..<source.count).map { index in

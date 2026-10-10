@@ -12,6 +12,7 @@ from pathlib import Path
 
 from .adb import Transport
 from .bridge import Bridge
+from .i18n import message as m
 from .protocol import read_exact
 
 PROTOCOL = "jipbul-guard-4"
@@ -216,7 +217,7 @@ class GuardBridge(Bridge):
     def __init__(self, serial=None, server_path=None, **kwargs):
         path = Path(server_path) if server_path else Path.cwd() / "artifacts/android/scrcpy-server"
         if not path.is_file():
-            raise RuntimeError("AI 서버를 먼저 빌드하세요: uv run --frozen python android/build.py")
+            raise RuntimeError(m("AI 서버를 먼저 빌드하세요: uv run --frozen python android/build.py"))
         super().__init__(serial, str(path), **kwargs)
         self.transport = Transport(self.adb, str(path), guarded=True)
         self.guard = None

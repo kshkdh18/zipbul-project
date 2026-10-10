@@ -10,6 +10,8 @@ import numpy as np
 from .actions import STATUS_ACTIONS, ActionAdapter, Subgoal
 from .camera import camera_rect
 from .flight_profile import DEFAULT_AXES
+from .i18n import LANGUAGES, error_text
+from .i18n import message as m
 from .mission import Mission
 from .planning import parse_plan
 
@@ -18,27 +20,30 @@ MIN_REQUEST_INTERVAL_S = 0.2
 MAX_LUNA_OBSERVATION_AGE_S = 2.0
 VERIFY_INTERVAL_S = 0.5
 STATE_LABELS = {
-    "idle": "대기",
-    "planning": "계획 중",
-    "replanning": "재계획 중",
-    "running": "조작 중",
-    "verifying": "완료 확인",
-    "paused": "중단",
-    "completed": "완료",
-    "selecting_camera": "영역 선택 중",
+    "idle": m("대기"),
+    "planning": m("계획 중"),
+    "replanning": m("재계획 중"),
+    "running": m("조작 중"),
+    "verifying": m("완료 확인"),
+    "paused": m("중단"),
+    "completed": m("완료"),
+    "selecting_camera": m("영역 선택 중"),
 }
 
 
 class GuidanceMission(Mission):
-    def __init__(self, bridge, decider, planner, goal, *, mode="hierarchical", **kwargs):
+    def __init__(self, bridge, decider, planner, goal, *, mode="hierarchical", language="ko", **kwargs):
         if mode not in ("hierarchical", "direct"):
             raise ValueError("Unknown guidance mode")
+        if language not in LANGUAGES:
+            raise ValueError("Unsupported language")
+        self.language = language
         super().__init__(bridge, decider, goal, **kwargs)
         self.decider, self.planner = decider, planner
         self.mode = mode
         self.session_id = uuid.uuid4().hex
         self.plan_version = 0
-        self.subgoal = Subgoal.direct(self.goal) if mode == "direct" else None
+        self.subgoal = Subgoal.direct(self.goal, self.language) if mode == "direct" else None
         self.completed_subgoals = deque(maxlen=40)
         self.trigger = "mission_start"
         self.last_sample_sequence = -1
@@ -56,7 +61,7 @@ class GuidanceMission(Mission):
 
     def start(self, require_ui=False):
         if self.state != "idle":
-            raise RuntimeError("새 임무를 시작하세요.")
+            raise RuntimeError(m("새 임무를 시작하세요."))
         # Mission.start sets running before launching the thread; _run selects its initial phase.
         super().start(require_ui)
 
@@ -65,7 +70,7 @@ class GuidanceMission(Mission):
             if roi is not None:
                 frame = self.executor.bridge.latest_frame()
                 if frame is None:
-                    raise ValueError("최신 화면이 필요합니다.")
+                    raise ValueError(m("최신 화면이 필요합니다."))
                 roi = list(camera_rect(roi, frame.width, frame.height))
             self.executor.neutral("camera_region_changed")
             self.executor.camera_roi = roi
@@ -74,10 +79,10 @@ class GuidanceMission(Mission):
             self.completed_subgoals.clear()
             self.verifications = 0
             self.next_sample_at = 0
-            self.subgoal = Subgoal.direct(self.goal) if self.mode == "direct" else None
+            self.subgoal = Subgoal.direct(self.goal, self.language) if self.mode == "direct" else None
             self.trigger = "camera_region_changed"
             self.state = ("running" if self.mode == "direct" else "replanning") if roi else "selecting_camera"
-            self.message = "새 카메라 영역으로 판단합니다." if roi else "카메라 영역을 지정하세요."
+            self.message = m("새 카메라 영역으로 판단합니다.") if roi else m("카메라 영역을 지정하세요.")
 
     def _schedule_plan(self, trigger):
         self.executor.neutral("planning: " + trigger)
@@ -85,7 +90,7 @@ class GuidanceMission(Mission):
         self.plan_version += 1
         self.trigger = trigger
         self.state = "replanning"
-        self.message = "Astra가 영상으로 다음 접근을 계획합니다."
+        self.message = m("Astra가 영상으로 다음 접근을 계획합니다.")
         self.verifications = 0
         self._after_current_frame()
 
@@ -100,6 +105,7 @@ class GuidanceMission(Mission):
             session_id=self.session_id,
             plan_version=self.plan_version,
             controller_mode=self.mode,
+            response_language="English" if self.language == "en" else "Korean",
             planning_trigger=self.trigger,
             current_subgoal=asdict(self.subgoal) if self.subgoal else None,
             completed_subgoals=list(self.completed_subgoals),
@@ -177,21 +183,21 @@ class GuidanceMission(Mission):
                 self.verifications = 0
                 self.state = "running"
                 self.next_sample_at = 0
-                self.message = "완료 조건을 다시 확인하고 조작을 이어갑니다."
+                self.message = m("완료 조건을 다시 확인하고 조작을 이어갑니다.")
                 self._after_current_frame()
         elif action == "SUBGOAL_DONE":
-            self.message = "영상에서 목표 달성 여부를 확인합니다."
+            self.message = m("영상에서 목표 달성 여부를 확인합니다.")
             if self.mode == "direct":
                 self._begin_verification()
             else:
                 self._schedule_plan("SUBGOAL_DONE")
         elif action == "WAIT":
             self.executor.neutral("observing")
-            self.message = "입력을 해제하고 새 영상을 관찰합니다."
+            self.message = m("입력을 해제하고 새 영상을 관찰합니다.")
             self._after_current_frame()
         else:
             axes = self.executor.profile.axes if self.executor.profile else DEFAULT_AXES
-            command = ActionAdapter.command(action, observation.id, self.subgoal, axes)
+            command = ActionAdapter.command(action, observation.id, self.subgoal, axes, self.language)
             self.message = command["reason"]
             self.executor.submit(
                 observation,
@@ -215,6 +221,7 @@ class GuidanceMission(Mission):
                 self.journal.event(
                     "guidance_start",
                     mode=self.mode,
+                    language=self.language,
                     session_id=self.session_id,
                     planner_model="gpt-6-astra",
                     controller_model="gpt-6-luna",
@@ -263,7 +270,7 @@ class GuidanceMission(Mission):
                     request["status"] = "completed" if decision is not None else "cancelled"
                 except Exception as exc:
                     request["status"] = "error"
-                    request["error"] = str(exc)
+                    request["error"] = error_text(exc)
                     with self.executor.lock:
                         if self.executor.running and self._discard_reason(observation, "astra"):
                             self.discarded += 1
@@ -307,8 +314,8 @@ class GuidanceMission(Mission):
                 self.state = "paused"
                 self.message = self.executor.reason
         except Exception as exc:
-            self.stop("error: " + str(exc))
-            self.journal.event("error", message=str(exc))
+            self.stop("error: " + error_text(exc))
+            self.journal.event("error", message=error_text(exc))
         finally:
             self.executor.stop(self.message or "finished")
             for provider in (self.decider, self.planner):
@@ -337,6 +344,7 @@ class GuidanceMission(Mission):
             session_id=self.session_id,
             controller_mode=self.mode,
             plan_version=self.plan_version,
+            language=self.language,
             decision_policy=POLICY_VERSION,
             model_metrics=metrics,
             completed_subgoals=list(self.completed_subgoals),

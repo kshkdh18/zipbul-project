@@ -15,6 +15,12 @@ Python 3.12–3.13, Java 17, Android SDK platform 36/build-tools 36.0.0과 ADB�
 
 `OPENAI_API_KEY`를 환경변수 또는 이 폴더의 `.env.local`에 설정하세요. 앱 자체는 다른 프로젝트에서 키·로그·검증 기록을 자동으로 가져오지 않습니다. AI 실행 시 선택한 이미지와 목표가 OpenAI API로 전송되고 사용량이 발생합니다. Astra는 Responses의 `gpt-6-astra`, Luna는 Decisions의 `gpt-6-luna`를 사용합니다. SDK는 `openai>=3.26,<4`입니다.
 
+## 언어 설정 / Language
+
+**Options → Language**에서 **English / 한국어**를 선택합니다. 기본 언어는 영어입니다. 버튼·보정 안내·상태 메시지·3D 방향과 범례가 즉시 바뀌며 `.runtime/settings.json`에 선택을 저장합니다. 언어 변경은 입력한 목표, USB 연결, 보정, 제어 설정이나 진행 중인 임무를 초기화하지 않습니다. AI가 작성하는 하위 목표·완료 조건·설명은 다음 임무부터 선택한 언어를 사용하며 사용자가 입력한 목표는 그대로 보존합니다.
+
+Choose **English** or **한국어** in **Options → Language**. English is the default. The interface updates immediately and the preference is remembered. AI descriptions use the selected language from the next mission; your goal and control settings are preserved.
+
 ## 시연 순서
 
 1. 잠금을 해제한 Android를 USB로 연결하고 USB 디버깅을 승인합니다. 기존 DJI 앱에서 카메라와 조이스틱이 있는 화면을 엽니다.

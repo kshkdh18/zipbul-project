@@ -55,11 +55,11 @@ final class Recorder: @unchecked Sendable {
         depthIndex = try JSONLinesWriter(directory.appendingPathComponent("depth-index.jsonl"))
         events = try JSONLinesWriter(directory.appendingPathComponent("events.jsonl"))
         for name in ["depth.bin", "confidence.bin"] {
-            guard FileManager.default.createFile(atPath: directory.appendingPathComponent(name).path, contents: nil) else { throw ScanError.invalid("바이너리 파일 생성 실패") }
+            guard FileManager.default.createFile(atPath: directory.appendingPathComponent(name).path, contents: nil) else { throw ScanError.invalid("Could not create a binary data file") }
         }
         depthFile = try FileHandle(forWritingTo: directory.appendingPathComponent("depth.bin"))
         confidenceFile = try FileHandle(forWritingTo: directory.appendingPathComponent("confidence.bin"))
-        try events.append(CaptureEvent("session_created", message: "수집 준비"))
+        try events.append(CaptureEvent("session_created", message: "Preparing to scan"))
     }
 
     func reserveImageSlot() -> Bool { imageSlots.wait(timeout: .now()) == .success }
@@ -71,7 +71,7 @@ final class Recorder: @unchecked Sendable {
             overflow += 1; overflowVideo += packet.wantsVideo ? 1 : 0; overflowDepth += packet.wantsDepth ? 1 : 0
             let first = overflow == 1
             overflowLock.unlock()
-            if first { onFatal?("메타데이터 대기열이 가득 찼습니다.") }
+            if first { onFatal?("The metadata queue is full.") }
             return
         }
         queue.async { [self] in
@@ -115,9 +115,9 @@ final class Recorder: @unchecked Sendable {
             kCVPixelBufferPixelFormatTypeKey as String: CVPixelBufferGetPixelFormatType(image),
             kCVPixelBufferWidthKey as String: width, kCVPixelBufferHeightKey as String: height
         ])
-        guard writer.canAdd(input) else { throw ScanError.invalid("영상 인코더를 구성할 수 없습니다.") }
+        guard writer.canAdd(input) else { throw ScanError.invalid("Could not configure the video encoder.") }
         writer.add(input)
-        guard writer.startWriting() else { throw writer.error ?? ScanError.invalid("영상 저장 시작 실패") }
+        guard writer.startWriting() else { throw writer.error ?? ScanError.invalid("Could not start recording video") }
         writer.startSession(atSourceTime: .zero)
         self.writer = writer; self.input = input; self.adaptor = adaptor
         try JSON.save(manifest, to: directory.appendingPathComponent("manifest.json"))
@@ -127,7 +127,7 @@ final class Recorder: @unchecked Sendable {
         var record = packet.record
         if manifest.timeOrigin == nil {
             manifest.timeOrigin = record.arTimestamp
-            try events.append(CaptureEvent("capture_started", message: "첫 수집 프레임", timestamp: record.arTimestamp))
+            try events.append(CaptureEvent("capture_started", message: "First captured frame", timestamp: record.arTimestamp))
             try JSON.save(manifest, to: directory.appendingPathComponent("manifest.json"))
         }
         let elapsed = record.arTimestamp - manifest.timeOrigin!
@@ -217,7 +217,7 @@ final class Recorder: @unchecked Sendable {
     }
 
     private func finalize(_ completion: @escaping (SessionManifest) -> Void) {
-        if let writer, writer.status != .completed { failures.append(writer.error?.localizedDescription ?? "영상 마무리 실패") }
+        if let writer, writer.status != .completed { failures.append(writer.error?.localizedDescription ?? "Could not finalize the video") }
         for operation in [{ try self.frames.close() }, { try self.depthIndex.close() }, { try self.events.close() },
                           { try self.depthFile.synchronize(); try self.depthFile.close() }, { try self.confidenceFile.synchronize(); try self.confidenceFile.close() }] {
             do { try operation() } catch { failures.append(error.localizedDescription) }
@@ -230,7 +230,7 @@ final class Recorder: @unchecked Sendable {
             final.errors += report.issues
             final.warnings = report.warnings
             let normalStop = ["user", "time_limit", "debug_smoke"].contains(final.stopReason ?? "")
-            if !normalStop { final.warnings.append("수집이 조기에 종료되었습니다: \(final.stopReason ?? "unknown")") }
+            if !normalStop { final.warnings.append("Scan ended early: \(final.stopReason ?? "unknown")") }
             final.status = final.errors.isEmpty && final.summary.videoDropped == 0 && final.summary.depthMissing == 0 && normalStop ? .complete : .partial
             if final.summary.videoWritten == 0 && final.summary.depthWritten == 0 && final.summary.meshFaces == 0 { final.status = .failed }
             do {

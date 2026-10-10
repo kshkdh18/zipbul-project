@@ -77,7 +77,7 @@ final class CoreTests: XCTestCase {
         var changed = try Data(contentsOf: directory.appendingPathComponent("depth.bin")); changed[0] ^= 1
         try changed.write(to: directory.appendingPathComponent("depth.bin"))
         XCTAssertThrowsError(try Exporter.export(session: directory, destination: target))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: zip.path), "이전 ZIP은 실패 시 보존되어야 합니다")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: zip.path), "A failed export must preserve the previous ZIP")
     }
 
     func testCorruptDepthReferenceAndMissingConfidenceAreDetected() async throws {
@@ -88,7 +88,7 @@ final class CoreTests: XCTestCase {
         record.depthOffset = 4
         let writer = try JSONLinesWriter(url); try writer.append(record); try writer.close()
         var report = await PackageValidator.validate(directory, manifest: manifest)
-        XCTAssertTrue(report.issues.contains { $0.contains("바이너리 범위") })
+        XCTAssertTrue(report.issues.contains { $0.contains("depth binary range") })
         try FileManager.default.removeItem(at: directory.appendingPathComponent("confidence.bin"))
         report = await PackageValidator.validate(directory, manifest: manifest)
         XCTAssertFalse(report.passed)
@@ -102,14 +102,14 @@ final class CoreTests: XCTestCase {
         frames[0].videoStatus = "queue_full"
         let writer = try JSONLinesWriter(url); for frame in frames { try writer.append(frame) }; try writer.close()
         let report = await PackageValidator.validate(directory, manifest: manifest)
-        XCTAssertTrue(report.issues.contains { $0.contains("저장되지 않은 프레임") })
+        XCTAssertTrue(report.issues.contains { $0.contains("unwritten frame") })
     }
 
     func testMissingMeshIsPartialEvidenceNotValidPackage() async throws {
         let manifest = try await makeFixture()
         try FileManager.default.removeItem(at: directory.appendingPathComponent("mesh.obj"))
         let report = await PackageValidator.validate(directory, manifest: manifest)
-        XCTAssertFalse(report.passed); XCTAssertTrue(report.issues.contains { $0.contains("메쉬 검증") })
+        XCTAssertFalse(report.passed); XCTAssertTrue(report.issues.contains { $0.contains("Mesh validation") })
         XCTAssertEqual(report.videoSampleCount, 3)
     }
 

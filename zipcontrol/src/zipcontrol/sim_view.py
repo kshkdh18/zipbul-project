@@ -10,15 +10,25 @@ from PySide6.QtQuick3D import QQuick3DGeometry
 from PySide6.QtQuickWidgets import QQuickWidget
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
+from .i18n import message as m
+from .localized_ui import I18n
 from .simulation import Simulation
 
 
 class SceneState(QObject):
     changed = Signal()
 
-    def __init__(self, simulation):
+    def __init__(self, simulation, i18n):
         super().__init__()
         self.simulation = simulation
+        self.i18n = i18n
+        i18n.changed.connect(self.changed.emit)
+
+    legend = Property(
+        str,
+        lambda self: self.i18n.render(m("초록 전후  ·  파랑 좌우  ·  노랑 상하  ·  보라 회전")),
+        notify=changed,
+    )
 
     position = Property(
         QVector3D,
@@ -54,21 +64,22 @@ class TrailGeometry(QQuick3DGeometry):
 
 
 class SimulationPanel(QWidget):
-    def __init__(self, stream):
+    def __init__(self, stream, i18n=None):
         super().__init__()
+        self.i18n = i18n or I18n(parent=self)
         self.stream = stream
         self.simulation = Simulation()
-        self.scene_state = SceneState(self.simulation)
+        self.scene_state = SceneState(self.simulation, self.i18n)
         self.trail_geometry = TrailGeometry()
         self._trail_snapshot = None
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         top = QHBoxLayout()
-        title = QLabel("이동 가이드  /  3D")
+        title = self.i18n.widget(QLabel, m("이동 가이드  /  3D"))
         title.setStyleSheet("color: #60e5c3; font-weight: 700; font-size: 16px")
         top.addWidget(title)
         top.addStretch()
-        reset = QPushButton("궤적 초기화")
+        reset = self.i18n.widget(QPushButton, m("궤적 초기화"))
         reset.clicked.connect(self.reset)
         top.addWidget(reset)
         layout.addLayout(top)
@@ -80,15 +91,15 @@ class SimulationPanel(QWidget):
         self.view.rootContext().setContextProperty("trailGeometry", self.trail_geometry)
         self.view.setSource(QUrl.fromLocalFile(str(Path(__file__).parent / "qml/DroneScene.qml")))
         layout.addWidget(self.view, 1)
-        self.label = QLabel("이동 지시 대기")
+        self.label = self.i18n.widget(QLabel, m("이동 지시 대기"))
         self.label.setWordWrap(True)
         self.label.setStyleSheet("font-size: 25px; font-weight: 700; padding: 8px; color: #f0fbff")
         layout.addWidget(self.label)
-        self.reason = QLabel("목표를 입력하고 카메라 영역을 지정하세요.")
+        self.reason = self.i18n.widget(QLabel, m("목표를 입력하고 카메라 영역을 지정하세요."))
         self.reason.setWordWrap(True)
         self.reason.setStyleSheet("font-size: 15px; padding: 8px; color: #b6ccdc")
         layout.addWidget(self.reason)
-        self.status = QLabel("명령 기반 가상 궤적 · 실제 위치 측정값이 아닙니다")
+        self.status = self.i18n.widget(QLabel, m("명령 기반 가상 궤적 · 실제 위치 측정값이 아닙니다"))
         self.status.setWordWrap(True)
         self.status.setStyleSheet("color: #7f9aaf; padding: 8px")
         layout.addWidget(self.status)
@@ -116,11 +127,24 @@ class SimulationPanel(QWidget):
         if points != self._trail_snapshot:
             self.trail_geometry.set_points(points)
             self._trail_snapshot = points
-        self.label.setText(self.simulation.label)
-        self.reason.setText(self.simulation.reason)
-        self.status.setText(
-            f"{self.simulation.state} · 명령 기반 가상 궤적\n"
-            "실제 위치 측정값이 아닙니다 · 드래그로 시점 회전 / 휠로 확대"
+        labels = self.simulation.label.split(" · ")
+        instruction = m(
+            " · ".join("{p" + str(i) + "}" for i in range(len(labels))),
+            **{f"p{i}": m(value) for i, value in enumerate(labels)},
+        )
+        self.i18n.set(self.label, "setText", instruction)
+        self.i18n.set(self.reason, "setText", self.simulation.reason)
+        self.i18n.set(
+            self.status,
+            "setText",
+            m(
+                "{p0} · 명령 기반 가상 궤적\n실제 위치 측정값이 아닙니다 · 드래그로 시점 회전 / 휠로 확대",
+                p0=m(self.simulation.state),
+            ),
         )
         if self.view.status() == QQuickWidget.Status.Error:
-            self.status.setText("3D 화면 오류: " + "; ".join(e.toString() for e in self.view.errors()))
+            self.i18n.set(
+                self.status,
+                "setText",
+                m("3D 화면 오류: ") + "; ".join((e.toString() for e in self.view.errors())),
+            )

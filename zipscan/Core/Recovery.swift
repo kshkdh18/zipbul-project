@@ -9,7 +9,7 @@ public enum SessionRecovery {
         let report = await PackageValidator.validate(directory, manifest: manifest)
         manifest.status = .partial; manifest.stopReason = "recovered_after_interruption"
         manifest.errors = Array(Set(manifest.errors + report.issues)).sorted()
-        manifest.warnings = report.warnings + ["중단된 세션에서 읽을 수 있는 데이터를 복구했습니다. 영상과 최종 메쉬가 없을 수 있습니다."]
+        manifest.warnings = report.warnings + ["Recovered readable data from an interrupted scan. The video or final mesh may be missing."]
         manifest.summary.duration = max(manifest.summary.duration, report.recordedDuration)
         manifest.summary.videoWritten = report.videoSampleCount
         manifest.summary.depthWritten = report.depthCount

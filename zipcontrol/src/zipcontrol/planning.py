@@ -22,7 +22,8 @@ When planning_trigger is SUBGOAL_DONE, inspect the images yourself. Luna's claim
 If the previous subgoal is not complete, set it again or choose a better approach.
 For REPLAN, find an alternative using the current scene. Do not request human takeover.
 Only call need_operator for missing essential information about the user's goal; ask specifically.
-set_subgoal contains concise Korean goal, completion_criteria and reason and the needed actions.
+set_subgoal contains concise goal, completion_criteria and reason in response_language (Korean if
+unspecified), and the needed actions. Use the requested language even if the user's goal uses another language.
 finish requires visual evidence that the OVERALL goal is complete. During completion_verification,
 check the overall goal again in the new image; use set_subgoal if it is no longer complete.
 Return exactly one function. You cannot command sticks.

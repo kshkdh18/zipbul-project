@@ -10,6 +10,7 @@ from openai import OpenAI
 
 from .actions import ACTION_DESCRIPTIONS, STATUS_ACTIONS
 from .astra import observation_content
+from .i18n import message as m
 from .planning import CONTEXT
 
 LUNA_SYSTEM = (
@@ -49,7 +50,7 @@ def parse_choice(response, allowed):
         raise ValueError("Exactly one Decisions answer required")
     answer = response.answers[0]
     if answer.type == "refusal":
-        raise RuntimeError("Luna Decisions가 판단을 거부했습니다.")
+        raise RuntimeError(m("Luna Decisions가 판단을 거부했습니다."))
     if answer.type != "choice" or answer.name != "next_action":
         raise ValueError("Unexpected Decisions answer type/name")
     if not isinstance(answer.choice, str) or answer.choice not in allowed:
@@ -73,7 +74,7 @@ class LunaDecider:
     def __init__(self, client=None):
         key = os.getenv("OPENAI_API_KEY") or dotenv_values(".env.local").get("OPENAI_API_KEY")
         if client is None and not key:
-            raise RuntimeError("OPENAI_API_KEY를 환경변수 또는 .env.local에 설정하세요.")
+            raise RuntimeError(m("OPENAI_API_KEY를 환경변수 또는 .env.local에 설정하세요."))
         self.client = client or OpenAI(api_key=key, timeout=15, max_retries=0)
 
     def decide(self, observation, previous=None):

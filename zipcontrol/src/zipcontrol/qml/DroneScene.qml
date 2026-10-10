@@ -143,7 +143,7 @@ Rectangle {
     }
     Text {
         anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.margins: 18
-        text: "초록 전후  ·  파랑 좌우  ·  노랑 상하  ·  보라 회전"
+        text: guideState.legend
         color: "#90aabb"; font.pixelSize: 12
     }
     MouseArea {
