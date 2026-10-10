@@ -4,6 +4,8 @@
 
 **시연 사이트:** [Sites 공개 배포](https://zipbul-field-explorer.summits.chatgpt.site) · [Mac 터널 배포](https://zipbul.summit1123.co.kr)
 
+**드론 제어 데모:** [실제 드론 비행 제어 영상](https://www.youtube.com/watch?v=CwKV0vJf2Jg). Zipcontrol은 Android 드론 앱의 조이스틱 조작을 통한 실제 비행 제어까지 확인했습니다. 2026-10-10 사용자 확인과 영상 근거를 [컨트롤러 검증 기록](zipcontrol/VALIDATION.md)에 반영했습니다.
+
 ## 제품 구성
 
 | 폴더 | 역할 | 실행·검증 안내 |
@@ -11,7 +13,7 @@
 | `zipscan/` | iOS LiDAR 수집, 원본 영상·카메라·깊이·메시 내보내기 | [스캐너 README](zipscan/README.md) |
 | `zipscan/Texture/` | 수집한 원본으로 사진 텍스처가 내장된 GLB 생성 | [텍스처 README](zipscan/Texture/README.md) |
 | `zipbul/` | 3D 분석·워크스루, 영상 근거, 수동 위치 연결, 관계도, AI 분석 | [메인 앱 README](zipbul/README.md) |
-| `zipcontrol/` | Android 카메라와 Astra 이동 지시를 연결한 Mac 시연 앱 | [컨트롤러 README](zipcontrol/README.md) |
+| `zipcontrol/` | Astra 계획·Luna Decisions와 Android 조이스틱 조작을 연결한 Mac 드론 제어 앱. 실제 비행 제어 확인 | [컨트롤러 README](zipcontrol/README.md) |
 
 수집 세션을 Texture에서 처리한 **GLB + 원본 영상**을 메인 앱으로 가져옵니다. 카메라 메타데이터가 없어도 수동 위치 연결을 사용할 수 있습니다. 세 제품은 이 저장소 하나에서 관리합니다.
 

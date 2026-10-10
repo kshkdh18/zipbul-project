@@ -1,6 +1,10 @@
 # Zipcontrol · Astra 계획 + Luna Decisions 조작
 
-사드론 시연용 Mac 앱입니다. **선택한 카메라 영상 → Astra 하위 목표 → Luna 동작 선택 → Android 실제 터치 + 3D 가이드 → 사람이 이동 → 새 영상**을 반복합니다.
+Android 드론 앱의 조이스틱을 직접 조작하는 카메라 기반 드론 제어 Mac 앱입니다. **선택한 카메라 영상 → Astra 하위 목표 → Luna 동작 선택 → Android 조이스틱 터치 → 기체 이동 → 새 영상**을 반복하며, 수락된 명령으로 3D 이동 가이드를 표시합니다.
+
+**실제 드론 비행 제어를 확인했습니다.** 2026-10-10 사용자 확인과 [비행 데모 영상](https://www.youtube.com/watch?v=CwKV0vJf2Jg)을 근거로 검증 기록을 보완했습니다. 영상의 [3:55](https://www.youtube.com/watch?v=CwKV0vJf2Jg&t=235s)와 [4:09](https://www.youtube.com/watch?v=CwKV0vJf2Jg&t=249s)에서 실제 기체가 공중에 떠 있고 Zipcontrol 실행 화면이 함께 보입니다. 기존 관찰 전용 세션·Chrome 터치 진단과 비행 데모의 근거는 [VALIDATION.md](VALIDATION.md)에 구분해 기록했습니다.
+
+사람이 기체를 손으로 들고 이동하는 시연도 지원합니다. 아래 실행 순서는 이 시연 방식에 해당하며, 현재 모델 프롬프트에도 손으로 들고 이동한다는 전제가 남아 있습니다. 이번 문서 정정은 실제 비행 확인 결과를 추가한 것으로, 제어 코드나 프롬프트 변경을 포함하지 않습니다.
 
 ## 실행
 
@@ -21,7 +25,7 @@ Python 3.12–3.13, Java 17, Android SDK platform 36/build-tools 36.0.0과 ADB�
 
 Choose **English** or **한국어** in **Options → Language**. English is the default. The interface updates immediately and the preference is remembered. AI descriptions use the selected language from the next mission; your goal and control settings are preserved.
 
-## 시연 순서
+## 손으로 들고 이동하는 시연 순서
 
 1. 잠금을 해제한 Android를 USB로 연결하고 USB 디버깅을 승인합니다. 기존 DJI 앱에서 카메라와 조이스틱이 있는 화면을 엽니다.
 2. **AI 전용 서버 → USB 연결**을 누릅니다. 연결만으로 입력을 보내지 않습니다.
